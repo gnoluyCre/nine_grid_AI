@@ -1,0 +1,110 @@
+from __future__ import annotations
+
+from typing import Literal
+
+from pydantic import BaseModel
+
+
+ChartMode = Literal["yang", "yin"]
+BannerType = Literal["info", "warning"]
+BannerCode = Literal["zi-hour", "lunar-leap"]
+CellMarkerType = Literal["count", "mainSoul", "subSoul", "po", "missing"]
+CellMarkerPosition = Literal[
+    "top-left",
+    "right-middle",
+    "bottom-left",
+    "top-right",
+    "bottom",
+]
+ZiHourType = Literal["前子时", "后子时", "非子时"]
+
+
+class RegionOption(BaseModel):
+    id: str
+    provinceName: str
+    cityName: str
+    districtName: str
+    longitude: float
+
+
+class ResultSummaryViewModel(BaseModel):
+    name: str | None = None
+    gender: str
+    inputBirthDate: str
+    inputBirthTime: str
+    regionText: str
+    trueSolarDatetimeText: str
+    trueSolarShichen: str
+    ziHourType: ZiHourType
+
+
+class BannerViewModel(BaseModel):
+    type: BannerType
+    code: BannerCode
+    title: str
+    description: str
+
+
+class CellMarkerViewModel(BaseModel):
+    type: CellMarkerType
+    position: CellMarkerPosition
+    value: str | None = None
+
+
+class GridCellViewModel(BaseModel):
+    id: str
+    cellNumber: int | None
+    centerDigit: str
+    isPlaceholder: bool
+    count: int
+    isMainSoul: bool
+    isSubSoul: bool
+    isPo: bool
+    isMissing: bool
+    mainSoulCount: int
+    subSoulCount: int
+    poCount: int
+    hasMissing: bool
+    markers: list[CellMarkerViewModel]
+
+
+class GridBoardViewModel(BaseModel):
+    chartType: ChartMode
+    digitString: str
+    missingDigits: str
+    missingAttributes: str
+    missingCount: int
+    po: str
+    poRaw: str
+    mainSoul: str
+    subSoul: str
+    halfSupplement: str
+    cells: list[GridCellViewModel]
+
+
+class CaseMetricsViewModel(BaseModel):
+    solarBirthday: str
+    lunarBirthday: str
+    lunarBirthdayDisplay: str
+    age: int
+    trueSolarShichen: str
+    lunarIsLeapMonth: bool
+
+
+class ApiCaseChartsViewModel(BaseModel):
+    yang: GridBoardViewModel
+    yin: GridBoardViewModel
+
+
+class ApiCaseViewModel(BaseModel):
+    index: int
+    label: str
+    dateRelation: str
+    metrics: CaseMetricsViewModel
+    charts: ApiCaseChartsViewModel
+
+
+class BirthChartApiResponse(BaseModel):
+    summary: ResultSummaryViewModel
+    banners: list[BannerViewModel]
+    cases: list[ApiCaseViewModel]
