@@ -3,6 +3,7 @@ import type {
   BirthChartApiResponse,
   BirthFormValue,
   CaseSelectorViewModel,
+  ChartRecordDetailResponse,
   ChartMode,
   ChartCaseViewModel,
   GridBoardViewModel,
@@ -259,6 +260,31 @@ export function buildResultViewModelFromApiResponse(
     caseSelector,
     activeCase,
   };
+}
+
+export function buildResultViewModelFromRecordDetail(
+  payload: ChartRecordDetailResponse,
+  activeCaseIndex = 0,
+  mode: ChartMode = "yang",
+): ResultPageViewModel {
+  return buildResultViewModelFromApiResponse(
+    {
+      summary: {
+        name: payload.name,
+        gender: payload.gender,
+        inputBirthDate: payload.birthDate,
+        inputBirthTime: payload.birthTime,
+        regionText: payload.regionText,
+        trueSolarDatetimeText: payload.trueSolarDatetimeText,
+        trueSolarShichen: payload.trueSolarShichen,
+        ziHourType: payload.ziHourType,
+      },
+      banners: payload.banners,
+      cases: payload.cases,
+    },
+    activeCaseIndex,
+    mode,
+  );
 }
 
 export function resolveFixtureId(formValue: BirthFormValue) {

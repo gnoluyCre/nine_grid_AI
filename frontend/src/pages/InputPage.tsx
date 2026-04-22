@@ -1,25 +1,71 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { BirthForm } from "../components/BirthForm";
-import { CASE_FIXTURES, DEFAULT_FIXTURE_ID, REGION_OPTIONS } from "../fixtures/sampleCases";
-import { createBirthChart, fetchRegions } from "../lib/api";
+import { CASE_FIXTURES, REGION_OPTIONS } from "../fixtures/sampleCases";
+import {
+  clearBirthFormDraft,
+  clearEditingRecordContext,
+  consumeNewRecordIntent,
+  DEFAULT_FORM_VALUE,
+  DEFAULT_REGION_ID,
+  loadBirthFormDraft,
+  loadEditingRecordContext,
+  normalizeBirthFormValue,
+  saveBirthFormDraft,
+} from "../lib/formState";
+import { buildRegionTree, resolveRegionSelection } from "../lib/regionTree";
+import { createChartRecord, fetchRegions, updateChartRecord } from "../lib/api";
 import { resolveFixtureId } from "../lib/viewModel";
-import type { BirthFormValue, RegionOption } from "../types/models";
+import type { BirthFormValue, ChartRecordDetailResponse, EditingRecordContext, RegionOption } from "../types/models";
 
-const DEFAULT_FORM = CASE_FIXTURES.find((item) => item.id === DEFAULT_FIXTURE_ID)!.formPreset;
+interface InputRouteState {
+  returnMode?: "restore-input" | "new-record";
+  formValue?: BirthFormValue;
+}
 
 export function InputPage() {
+  const location = useLocation();
   const navigate = useNavigate();
-  const [formValue, setFormValue] = useState<BirthFormValue>(DEFAULT_FORM);
+  const [formValue, setFormValue] = useState<BirthFormValue>(() => loadBirthFormDraft() ?? DEFAULT_FORM_VALUE);
+  const [editingContext, setEditingContext] = useState<EditingRecordContext | null>(() => loadEditingRecordContext());
   const [regions, setRegions] = useState<RegionOption[]>(REGION_OPTIONS);
   const [regionError, setRegionError] = useState<string>("");
+  const [regionNotice, setRegionNotice] = useState<string>("");
   const [submitError, setSubmitError] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
+  const regionTree = useMemo(() => buildRegionTree(regions), [regions]);
 
   const activeFixture = useMemo(() => {
     const fixtureId = resolveFixtureId(formValue);
     return CASE_FIXTURES.find((item) => item.id === fixtureId) ?? CASE_FIXTURES[0];
   }, [formValue]);
+
+  useEffect(() => {
+    saveBirthFormDraft(formValue);
+  }, [formValue]);
+
+  useEffect(() => {
+    if (!editingContext) {
+      return;
+    }
+    setFormValue(editingContext.formValue);
+  }, [editingContext]);
+
+  useEffect(() => {
+    const routeState = (location.state as InputRouteState | undefined) ?? {};
+    const shouldStartNew = routeState.returnMode === "new-record" || consumeNewRecordIntent();
+    if (shouldStartNew) {
+      clearEditingRecordContext();
+      setEditingContext(null);
+      clearBirthFormDraft();
+      setFormValue(DEFAULT_FORM_VALUE);
+      return;
+    }
+
+    if (routeState.returnMode === "restore-input" && routeState.formValue) {
+      setFormValue(normalizeBirthFormValue(routeState.formValue));
+    }
+  }, [location.state]);
 
   useEffect(() => {
     let cancelled = false;
@@ -32,14 +78,21 @@ export function InputPage() {
         }
         setRegions(nextRegions);
         setRegionError("");
+        const nextTree = buildRegionTree(nextRegions);
+        const preferredSelection =
+          resolveRegionSelection(nextTree, DEFAULT_REGION_ID) ?? resolveRegionSelection(nextTree, nextRegions[0].id);
+
+        if (!preferredSelection) {
+          return;
+        }
+
+        setRegionNotice(preferredSelection.regionId === DEFAULT_REGION_ID ? "" : "默认地区初始化失败，已自动回退到首个可用地区。");
         setFormValue((current) => {
-          const hasSelectedRegion = nextRegions.some((item) => item.id === current.regionId);
-          if (hasSelectedRegion) {
-            return current;
-          }
+          const normalizedCurrent = normalizeBirthFormValue(current);
+          const currentSelection = resolveRegionSelection(nextTree, normalizedCurrent.regionId);
           return {
-            ...current,
-            regionId: nextRegions[0].id,
+            ...normalizedCurrent,
+            regionId: currentSelection?.regionId ?? preferredSelection.regionId,
           };
         });
       } catch (error) {
@@ -62,19 +115,38 @@ export function InputPage() {
     if (!fixture) {
       return;
     }
-    setFormValue(fixture.formPreset);
+    setFormValue(normalizeBirthFormValue(fixture.formPreset));
   }
 
   async function handleSubmit() {
+    const normalizedFormValue = normalizeBirthFormValue(formValue);
+    const hasBirthDate = normalizedFormValue.birthDate.length > 0;
+    const hasGender = normalizedFormValue.gender.length > 0;
+
+    if (!hasBirthDate || !hasGender) {
+      setSubmitError(!hasBirthDate ? "请选择出生日期后再提交。" : "请选择性别后再提交。");
+      return;
+    }
+
     setSubmitting(true);
     setSubmitError("");
 
     try {
-      const payload = await createBirthChart(formValue);
+      let resultDetail: ChartRecordDetailResponse;
+      if (editingContext) {
+        resultDetail = await updateChartRecord(editingContext.recordId, normalizedFormValue);
+        clearEditingRecordContext();
+        setEditingContext(null);
+      } else {
+        resultDetail = await createChartRecord(normalizedFormValue);
+      }
+      setFormValue(normalizedFormValue);
       navigate("/result", {
         state: {
-          formValue,
-          payload,
+          formValue: normalizedFormValue,
+          payload: resultDetail,
+          recordId: resultDetail.id,
+          recordAction: editingContext ? "updated" : "created",
         },
       });
     } catch (error) {
@@ -91,9 +163,20 @@ export function InputPage() {
         <section className="relative overflow-hidden rounded-[36px] border border-white/70 bg-[linear-gradient(135deg,rgba(255,255,255,0.94),rgba(248,243,253,0.96))] px-6 py-8 shadow-soft sm:px-8 lg:px-10 lg:py-10">
           <div className="absolute -left-12 top-10 h-40 w-40 rounded-full bg-[#efe6fb] blur-3xl" />
           <div className="absolute right-0 top-0 h-48 w-48 rounded-full bg-[#fbe1d5] blur-3xl" />
+          <div className="relative">
+            <div className="mb-6 flex items-center justify-between gap-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.28em] text-plum/60">Nine Grid System</p>
+              <button
+                type="button"
+                onClick={() => navigate("/records")}
+                className="rounded-full border border-plum/15 bg-white/82 px-4 py-2 text-sm font-semibold text-plum transition hover:bg-plum/5"
+              >
+                档案管理
+              </button>
+            </div>
+          </div>
           <div className="relative grid gap-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(18rem,0.85fr)] lg:items-end">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.28em] text-plum/60">Nine Grid System</p>
               <h1 className="mt-4 max-w-3xl font-display text-4xl font-extrabold tracking-tight text-ink sm:text-5xl lg:text-6xl">
                 面向真实排盘流程的
                 <span className="block text-plum">九宫格排盘系统</span>
@@ -117,14 +200,22 @@ export function InputPage() {
         </section>
 
         <section className="grid gap-8 lg:grid-cols-[minmax(0,0.98fr)_minmax(320px,0.82fr)] lg:items-start">
-          <BirthForm
-            value={formValue}
-            regions={regions}
-            onChange={setFormValue}
-            onPreset={handlePreset}
-            onSubmit={handleSubmit}
-            loading={submitting}
-          />
+          <div className="space-y-4">
+            {editingContext ? (
+              <section className="rounded-[28px] border border-amber-200 bg-amber-50/90 px-5 py-4 text-sm text-amber-900 shadow-sm">
+                正在编辑档案 #{editingContext.recordId}。修改原始信息后重新排盘，将直接覆盖该档案。
+              </section>
+            ) : null}
+            <BirthForm
+              value={formValue}
+              regionTree={regionTree}
+              onChange={setFormValue}
+              onPreset={handlePreset}
+              onSubmit={handleSubmit}
+              loading={submitting}
+              editing={Boolean(editingContext)}
+            />
+          </div>
 
           <aside className="space-y-5">
             <section className="card-surface p-6">
@@ -163,11 +254,16 @@ export function InputPage() {
             <section className="card-surface p-6">
               <p className="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-plum/55">系统状态</p>
               <div className="space-y-3">
-                <StatusRow label="地区服务" value={regionError ? "加载异常" : "正常可用"} tone={regionError ? "danger" : "success"} />
+                <StatusRow
+                  label="地区服务"
+                  value={regionError ? "加载异常" : regionNotice ? "初始化异常" : "正常可用"}
+                  tone={regionError ? "danger" : regionNotice ? "warning" : "success"}
+                />
                 <StatusRow label="排盘提交" value={submitError ? "提交失败" : submitting ? "排盘中" : "等待提交"} tone={submitError ? "danger" : submitting ? "warning" : "neutral"} />
                 <StatusRow label="结果结构" value="支持方案切换与阴阳双格" tone="success" />
               </div>
               {regionError ? <p className="mt-4 text-sm text-rose-700">地区加载失败：{regionError}</p> : null}
+              {regionNotice ? <p className="mt-4 text-sm text-amber-700">地区提示：{regionNotice}</p> : null}
               {submitError ? <p className="mt-3 text-sm text-rose-700">提交失败：{submitError}</p> : null}
             </section>
           </aside>

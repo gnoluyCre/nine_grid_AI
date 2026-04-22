@@ -108,3 +108,51 @@ class BirthChartApiResponse(BaseModel):
     summary: ResultSummaryViewModel
     banners: list[BannerViewModel]
     cases: list[ApiCaseViewModel]
+
+
+class ChartRecordListItem(BaseModel):
+    id: int
+    name: str | None = None
+    gender: str
+    birthDate: str
+    birthTime: str
+    regionId: str
+    regionText: str
+    ziHourType: ZiHourType
+    caseCount: int
+    hasLunarLeapCase: bool
+    trueSolarDatetimeText: str
+    trueSolarShichen: str
+    createdAt: str
+    firstCaseYangDigitString: str
+    firstCaseYangMissingDigits: str
+    firstCaseYinDigitString: str
+    firstCaseYinMissingDigits: str
+
+
+class ChartRecordListResponse(BaseModel):
+    items: list[ChartRecordListItem]
+    total: int
+    page: int
+    pageSize: int
+
+
+class ChartRecordDetailResponse(BaseModel):
+    id: int
+    name: str | None = None
+    gender: str
+    birthDate: str
+    birthTime: str
+    inputDatetimeText: str
+    regionId: str
+    regionText: str
+    longitude: float
+    ziHourType: ZiHourType
+    caseCount: int
+    hasLunarLeapCase: bool
+    trueSolarDatetimeText: str
+    trueSolarShichen: str
+    createdAt: str
+    updatedAt: str
+    banners: list[BannerViewModel]
+    cases: list[ApiCaseViewModel]

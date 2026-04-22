@@ -37,21 +37,21 @@ export interface QuickCaseOption {
 
 export const REGION_OPTIONS: RegionOption[] = [
   {
-    id: "xj-wlmq-tthe",
+    id: "新疆维吾尔自治区|乌鲁木齐市|头屯河区",
     provinceName: "新疆维吾尔自治区",
     cityName: "乌鲁木齐市",
     districtName: "头屯河区",
     longitude: 87.42,
   },
   {
-    id: "zj-hz-xh",
+    id: "浙江省|杭州市|西湖区",
     provinceName: "浙江省",
     cityName: "杭州市",
     districtName: "西湖区",
     longitude: 120.126897,
   },
   {
-    id: "bj-bj-cy",
+    id: "北京市|北京城区|朝阳区",
     provinceName: "北京市",
     cityName: "北京城区",
     districtName: "朝阳区",
@@ -114,7 +114,7 @@ export const CASE_FIXTURES: CaseFixture[] = [
       gender: "男",
       birthDate: "1999-10-11",
       birthTime: "06:00",
-      regionId: "xj-wlmq-tthe",
+      regionId: "新疆维吾尔自治区|乌鲁木齐市|头屯河区",
     },
   },
   {
@@ -171,7 +171,7 @@ export const CASE_FIXTURES: CaseFixture[] = [
       gender: "女",
       birthDate: "2024-03-10",
       birthTime: "14:20",
-      regionId: "bj-bj-cy",
+      regionId: "北京市|北京城区|朝阳区",
     },
   },
   {
@@ -228,7 +228,7 @@ export const CASE_FIXTURES: CaseFixture[] = [
       gender: "男",
       birthDate: "2020-05-23",
       birthTime: "12:00",
-      regionId: "zj-hz-xh",
+      regionId: "浙江省|杭州市|西湖区",
     },
   },
   {
@@ -323,7 +323,7 @@ export const CASE_FIXTURES: CaseFixture[] = [
       gender: "女",
       birthDate: "2013-06-05",
       birthTime: "23:35",
-      regionId: "zj-hz-xh",
+      regionId: "浙江省|杭州市|西湖区",
     },
   },
   {
@@ -418,7 +418,7 @@ export const CASE_FIXTURES: CaseFixture[] = [
       gender: "男",
       birthDate: "2014-07-08",
       birthTime: "00:16",
-      regionId: "zj-hz-xh",
+      regionId: "浙江省|杭州市|西湖区",
     },
   },
   {
@@ -475,7 +475,7 @@ export const CASE_FIXTURES: CaseFixture[] = [
       gender: "男",
       birthDate: "1910-08-19",
       birthTime: "12:00",
-      regionId: "bj-bj-cy",
+      regionId: "北京市|北京城区|朝阳区",
     },
   },
 ];

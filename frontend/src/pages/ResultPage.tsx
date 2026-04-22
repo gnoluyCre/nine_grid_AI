@@ -1,28 +1,33 @@
 import { useMemo, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { CaseSelector } from "../components/CaseSelector";
 import { ChartModeToggle } from "../components/ChartModeToggle";
 import { MetricsPanel } from "../components/MetricsPanel";
 import { NineGridBoard } from "../components/NineGridBoard";
 import { ResultBannerList } from "../components/ResultBannerList";
 import { ResultSummaryCard } from "../components/ResultSummaryCard";
-import { buildResultViewModelFromApiResponse } from "../lib/viewModel";
-import type { BirthChartApiResponse, BirthFormValue, ChartMode } from "../types/models";
+import { saveNewRecordIntent } from "../lib/formState";
+import { buildResultViewModelFromRecordDetail } from "../lib/viewModel";
+import type { BirthFormValue, ChartMode, ChartRecordDetailResponse } from "../types/models";
 
 interface ResultRouteState {
   formValue?: BirthFormValue;
-  payload?: BirthChartApiResponse;
+  payload?: ChartRecordDetailResponse;
+  recordId?: number;
+  recordAction?: "created" | "updated";
 }
 
 export function ResultPage() {
   const location = useLocation();
+  const navigate = useNavigate();
   const routeState = (location.state as ResultRouteState | undefined) ?? {};
   const [activeCaseIndex, setActiveCaseIndex] = useState(0);
   const [mode, setMode] = useState<ChartMode>("yang");
 
   const payload = routeState.payload;
+  const formValue = routeState.formValue;
   const viewModel = useMemo(
-    () => (payload ? buildResultViewModelFromApiResponse(payload, activeCaseIndex, mode) : null),
+    () => (payload ? buildResultViewModelFromRecordDetail(payload, activeCaseIndex, mode) : null),
     [activeCaseIndex, mode, payload],
   );
 
@@ -36,12 +41,13 @@ export function ResultPage() {
             <p className="mt-3 text-sm leading-6 text-ink/65">
               当前页面没有拿到后端返回的数据，请回到输入页重新提交一次。
             </p>
-            <Link
-              to="/"
+            <button
+              type="button"
+              onClick={() => navigate("/")}
               className="mt-6 inline-flex rounded-full border border-plum/15 bg-white/80 px-4 py-2 text-sm font-semibold text-plum transition hover:bg-plum/5"
             >
-              返回初始页
-            </Link>
+              返回上一步输入
+            </button>
           </div>
         </div>
       </main>
@@ -49,6 +55,24 @@ export function ResultPage() {
   }
 
   const activeTab = viewModel.activeCase.tabs.find((tab) => tab.key === mode) ?? viewModel.activeCase.tabs[0];
+
+  function handleReturnToInput() {
+    navigate("/", {
+      state: {
+        returnMode: "restore-input",
+        formValue,
+      },
+    });
+  }
+
+  function handleCreateNewRecord() {
+    saveNewRecordIntent();
+    navigate("/", {
+      state: {
+        returnMode: "new-record",
+      },
+    });
+  }
 
   return (
     <main className="min-h-dvh px-3 py-4 sm:px-5 sm:py-5 lg:px-6 lg:py-6">
@@ -58,16 +82,36 @@ export function ResultPage() {
             <p className="font-display text-xs font-bold uppercase tracking-[0.24em] text-plum/60">Nine Grid System</p>
             <h1 className="mt-2 font-display text-2xl font-extrabold tracking-tight text-ink">九宫格排盘结果</h1>
           </div>
-          <Link
-            to="/"
-            className="rounded-full border border-plum/15 bg-white/80 px-4 py-2 text-sm font-semibold text-plum transition hover:bg-plum/5"
-          >
-            返回初始页
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => navigate("/records")}
+              className="rounded-full border border-plum/15 bg-white/80 px-4 py-2 text-sm font-semibold text-plum transition hover:bg-plum/5"
+            >
+              档案管理
+            </button>
+            <button
+              type="button"
+              onClick={handleReturnToInput}
+              className="rounded-full border border-plum/15 bg-white/80 px-4 py-2 text-sm font-semibold text-plum transition hover:bg-plum/5"
+            >
+              返回上一步输入
+            </button>
+          </div>
         </div>
 
         <div className="space-y-3.5">
           <ResultSummaryCard summary={viewModel.summary} />
+          {routeState.recordAction === "created" && routeState.recordId ? (
+            <div className="rounded-[24px] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">
+              当前结果已保存为档案 #{routeState.recordId}。
+            </div>
+          ) : null}
+          {routeState.recordAction === "updated" ? (
+            <div className="rounded-[24px] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">
+              当前结果已同步覆盖原档案。
+            </div>
+          ) : null}
           <ResultBannerList banners={viewModel.banners} />
           <CaseSelector value={viewModel.caseSelector} onSelect={setActiveCaseIndex} />
         </div>
@@ -93,6 +137,15 @@ export function ResultPage() {
           />
         </div>
       </div>
+      {formValue ? (
+        <button
+          type="button"
+          onClick={handleCreateNewRecord}
+          className="fixed bottom-5 right-5 z-40 rounded-full bg-gradient-to-r from-plum to-iris px-5 py-3 font-display text-sm font-bold text-white shadow-soft transition hover:translate-y-[-1px] disabled:cursor-not-allowed disabled:opacity-60 sm:bottom-7 sm:right-7"
+        >
+          新增档案
+        </button>
+      ) : null}
     </main>
   );
 }

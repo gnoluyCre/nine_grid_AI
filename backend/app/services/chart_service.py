@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from collections import Counter
+from dataclasses import dataclass
 from datetime import datetime
 
 from ..adapters import RegionCatalog
+from ..adapters.region_catalog import RegionRecord
 from ..runtime import ensure_project_root
 from ..schemas.requests import BirthChartRequest
 from ..schemas.responses import (
@@ -48,6 +50,13 @@ class ChartRequestError(ValueError):
     """Raised when the request is valid JSON but not a valid business request."""
 
 
+@dataclass(frozen=True)
+class ComputedBirthChart:
+    response: BirthChartApiResponse
+    region: RegionRecord
+    raw_result: dict
+
+
 class BirthChartService:
     def __init__(self, region_catalog: RegionCatalog | None = None) -> None:
         self._region_catalog = region_catalog or RegionCatalog()
@@ -65,6 +74,9 @@ class BirthChartService:
         ]
 
     def build_birth_chart(self, request: BirthChartRequest) -> BirthChartApiResponse:
+        return self.build_computed_birth_chart(request).response
+
+    def build_computed_birth_chart(self, request: BirthChartRequest) -> ComputedBirthChart:
         region = self._region_catalog.get_by_id(request.regionId)
         if region is None:
             raise ChartRequestError(f"地区不存在: {request.regionId}")
@@ -100,7 +112,8 @@ class BirthChartService:
             for case_index, case_data in enumerate(result["cases"])
         ]
         banners = self._build_banners(result)
-        return BirthChartApiResponse(summary=summary, banners=banners, cases=cases)
+        response = BirthChartApiResponse(summary=summary, banners=banners, cases=cases)
+        return ComputedBirthChart(response=response, region=region, raw_result=result)
 
     def _build_case(self, case_index: int, case_data: dict) -> ApiCaseViewModel:
         case_result = case_data["result"]

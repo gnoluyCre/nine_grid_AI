@@ -27,6 +27,11 @@
   select {
     font: inherit;
   }
+
+  button {
+    border: 0;
+    background: transparent;
+  }
 }
 
 @layer components {
@@ -40,5 +45,53 @@
 
   .metric-row {
     @apply grid grid-cols-[10rem_minmax(0,1fr)] items-start gap-4 border-b border-[#f1ebf6] py-3 last:border-b-0;
+  }
+
+  .segmented-card {
+    @apply inline-flex w-full items-center justify-center rounded-[999px] border border-[#d2c6e1] bg-[#f7f2fb] px-4 py-3 text-sm font-semibold text-ink shadow-[inset_0_0_0_1px_rgba(255,255,255,0.55)] transition duration-200 hover:border-[#baa7d6] hover:bg-[#f1e9fa];
+  }
+
+  .segmented-card-active {
+    @apply border-plum bg-plum text-white shadow-soft hover:border-plum hover:bg-plum;
+  }
+
+  .picker-trigger {
+    @apply flex min-h-[5rem] items-center justify-between gap-4 rounded-[24px] border border-line/80 bg-white/90 px-4 py-4 shadow-sm transition hover:border-plum/30 hover:bg-plum/5;
+  }
+
+  .picker-trigger-empty {
+    @apply border-dashed;
+  }
+
+  .picker-trigger-label {
+    @apply block text-[11px] font-semibold uppercase tracking-[0.18em] text-plum/50;
+  }
+
+  .picker-trigger-value {
+    @apply mt-2 block font-display text-lg font-bold tracking-tight text-ink;
+  }
+
+  .picker-trigger-meta {
+    @apply inline-flex rounded-full border border-plum/10 bg-plum/5 px-3 py-1 text-xs font-semibold text-plum/80;
+  }
+
+  .picker-option {
+    @apply block w-full rounded-2xl border border-transparent bg-[#f7f3fb] px-3 py-3 text-left text-sm font-medium text-ink transition hover:border-plum/25 hover:bg-white;
+  }
+
+  .picker-option-active {
+    @apply border-plum/30 bg-plum text-white shadow-sm;
+  }
+
+  .picker-primary-button {
+    @apply rounded-full bg-plum px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#574577];
+  }
+
+  .picker-secondary-button {
+    @apply rounded-full border border-line bg-white px-4 py-3 text-sm font-semibold text-ink transition hover:border-plum/20 hover:bg-plum/5;
+  }
+
+  .picker-icon-button {
+    @apply rounded-full border border-line bg-white px-4 py-2 text-sm font-semibold text-ink transition hover:border-plum/20 hover:bg-plum/5;
   }
 }

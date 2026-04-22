@@ -17,6 +17,37 @@ export interface RegionOption {
   longitude: number;
 }
 
+export interface RegionTreeDistrict {
+  id: string;
+  name: string;
+  longitude: number;
+}
+
+export interface RegionTreeCity {
+  name: string;
+  districts: RegionTreeDistrict[];
+}
+
+export interface RegionTreeNode {
+  name: string;
+  cities: RegionTreeCity[];
+}
+
+export interface RegionSelectionValue {
+  provinceName: string;
+  cityName: string;
+  districtName: string;
+  regionId: string;
+}
+
+export interface PickerDraftState {
+  year?: number;
+  month?: number;
+  day?: number;
+  hour?: number;
+  minute?: number;
+}
+
 export interface BirthFormValue {
   name: string;
   gender: string;
@@ -104,6 +135,59 @@ export interface BirthChartApiResponse {
   summary: ResultSummaryViewModel;
   banners: BannerViewModel[];
   cases: ApiCaseViewModel[];
+}
+
+export interface ChartRecordListItem {
+  id: number;
+  name?: string;
+  gender: string;
+  birthDate: string;
+  birthTime: string;
+  regionId: string;
+  regionText: string;
+  ziHourType: "前子时" | "后子时" | "非子时";
+  caseCount: number;
+  hasLunarLeapCase: boolean;
+  trueSolarDatetimeText: string;
+  trueSolarShichen: string;
+  createdAt: string;
+  firstCaseYangDigitString: string;
+  firstCaseYangMissingDigits: string;
+  firstCaseYinDigitString: string;
+  firstCaseYinMissingDigits: string;
+}
+
+export interface ChartRecordListResponse {
+  items: ChartRecordListItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface ChartRecordDetailResponse {
+  id: number;
+  name?: string;
+  gender: string;
+  birthDate: string;
+  birthTime: string;
+  inputDatetimeText: string;
+  regionId: string;
+  regionText: string;
+  longitude: number;
+  ziHourType: "前子时" | "后子时" | "非子时";
+  caseCount: number;
+  hasLunarLeapCase: boolean;
+  trueSolarDatetimeText: string;
+  trueSolarShichen: string;
+  createdAt: string;
+  updatedAt: string;
+  banners: BannerViewModel[];
+  cases: ApiCaseViewModel[];
+}
+
+export interface EditingRecordContext {
+  recordId: number;
+  formValue: BirthFormValue;
 }
 
 export interface CaseSelectorItem {
