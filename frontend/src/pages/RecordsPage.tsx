@@ -8,7 +8,7 @@ import { ConfirmDialog } from "../components/ConfirmDialog";
 import { RecordDetailDialog } from "../components/RecordDetailDialog";
 import { UserAccountPanel } from "../components/UserAccountPanel";
 import { useAuth } from "../context/AuthContext";
-import { deleteChartRecord, fetchChartRecordDetail, fetchChartRecords } from "../lib/api";
+import { deleteChartRecord, exportChartRecords, fetchChartRecordDetail, fetchChartRecords } from "../lib/api";
 import { saveEditingRecordContext, saveNewRecordIntent } from "../lib/formState";
 import { formatShichenLabel, formatUnknownDisplay, UNKNOWN_DISPLAY } from "../lib/shichen";
 import type { ChartRecordDetailResponse, ChartRecordListItem, ChartRecordSearchParams } from "../types/models";
@@ -31,6 +31,7 @@ export function RecordsPage() {
   const [detailError, setDetailError] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [searchParams, setSearchParams] = useState<ChartRecordSearchParams>({});
+  const [exporting, setExporting] = useState(false);
 
   function handleCreateNewRecord() {
     saveNewRecordIntent();
@@ -210,6 +211,26 @@ export function RecordsPage() {
     }
   }
 
+  async function handleExportRecords() {
+    setError("");
+    setExporting(true);
+    try {
+      await exportChartRecords(searchParams);
+    } catch (nextError) {
+      const message = nextError instanceof Error ? nextError.message : "档案导出失败";
+      if (message === "请先登录") {
+        const nextUser = await refreshUser();
+        if (nextUser) {
+          setError("登录状态已恢复，请重新点击批量导出档案。");
+          return;
+        }
+      }
+      setError(message);
+    } finally {
+      setExporting(false);
+    }
+  }
+
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
@@ -217,11 +238,21 @@ export function RecordsPage() {
       <div className="mx-auto max-w-5xl space-y-6">
         <section className="card-surface p-6 sm:p-7">
           <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-plum/60">Archive Center</p>
-              <h1 className="mt-2 font-display text-3xl font-extrabold tracking-tight text-ink">档案管理</h1>
-              <p className="mt-3 text-sm leading-6 text-ink/62">查看已保存档案，支持回填编辑和删除。</p>
-            </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-plum/60">Archive Center</p>
+                <h1 className="mt-2 font-display text-3xl font-extrabold tracking-tight text-ink">档案管理</h1>
+                <p className="mt-3 text-sm leading-6 text-ink/62">查看已保存档案，支持回填编辑和删除。</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void handleExportRecords()}
+                  disabled={loading || exporting}
+                  className="rounded-full border border-plum/15 bg-white/82 px-4 py-2 text-sm font-semibold text-plum transition hover:bg-plum/5 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {exporting ? "导出中..." : "批量导出档案"}
+                </button>
+              </div>
             <div className="flex flex-wrap items-center gap-3">
               <button
                 type="button"

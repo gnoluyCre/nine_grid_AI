@@ -153,6 +153,25 @@ def list_chart_records(
     )
 
 
+@router.get("/chart-records/export")
+def export_chart_records(
+    http_request: Request,
+    name: str | None = Query(default=None),
+    digit_string: str | None = Query(default=None, alias="digitString"),
+) -> FileResponse:
+    current_user = require_current_user(http_request)
+    file_path, file_name = http_request.app.state.chart_record_service.export_records(
+        current_user.id,
+        name=name,
+        digit_string=digit_string,
+    )
+    return FileResponse(
+        path=file_path,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        filename=file_name,
+    )
+
+
 @router.get("/chart-records/{record_id}", response_model=ChartRecordDetailResponse)
 def get_chart_record(record_id: int, http_request: Request) -> ChartRecordDetailResponse:
     current_user = require_current_user(http_request)

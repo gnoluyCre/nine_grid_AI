@@ -5,7 +5,13 @@
 from __future__ import annotations
 
 import json
+import tempfile
+import uuid
 from datetime import UTC, datetime
+from pathlib import Path
+
+from openpyxl import Workbook
+from openpyxl.styles import Alignment
 
 from ..repositories import ChartRecordFilters, ChartRecordRepository
 from ..schemas.requests import BirthChartRequest
@@ -91,6 +97,50 @@ class ChartRecordService:
         if record is None:
             raise ChartRequestError(f"排盘记录不存在: {record_id}")
         return self._map_record_detail(record)
+
+    def export_records(self, user_id: int, *, name: str | None = None, digit_string: str | None = None) -> tuple[Path, str]:
+        filters = ChartRecordFilters(name=name, digit_string=digit_string)
+        rows = self._repository.list_records_for_export(user_id, filters)
+        if not rows:
+            raise ChartRequestError("当前没有可导出的档案")
+
+        workbook = Workbook()
+        worksheet = workbook.active
+        worksheet.title = "档案导出"
+        worksheet.append(["档案名", "性别", "阳历生日", "阳格", "阳格缺漏", "农历生日", "阴格", "阴格缺漏", "时辰"])
+
+        wrap_alignment = Alignment(vertical="top", wrap_text=True)
+        single_line_alignment = Alignment(vertical="top")
+
+        for row in rows:
+            detail = self._repository.get_record(user_id, row["id"])
+            if detail is None or not detail["cases"]:
+                continue
+
+            export_values = self._build_export_row(detail)
+            worksheet.append(export_values)
+            current_row = worksheet.max_row
+            for column_index in range(1, 10):
+                worksheet.cell(row=current_row, column=column_index).alignment = (
+                    wrap_alignment if column_index in {4, 5, 6, 7, 8} else single_line_alignment
+                )
+
+        worksheet.column_dimensions["A"].width = 20
+        worksheet.column_dimensions["B"].width = 10
+        worksheet.column_dimensions["C"].width = 16
+        worksheet.column_dimensions["D"].width = 18
+        worksheet.column_dimensions["E"].width = 18
+        worksheet.column_dimensions["F"].width = 18
+        worksheet.column_dimensions["G"].width = 18
+        worksheet.column_dimensions["H"].width = 18
+        worksheet.column_dimensions["I"].width = 10
+
+        temp_dir = Path(tempfile.gettempdir()) / "nine_grid_record_exports"
+        temp_dir.mkdir(parents=True, exist_ok=True)
+        file_name = f"档案批量导出_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.xlsx"
+        file_path = temp_dir / f"{uuid.uuid4().hex}.xlsx"
+        workbook.save(file_path)
+        return file_path, file_name
 
     @staticmethod
     def _build_grid_data(chart_type: str, chart: object) -> dict[str, object]:
@@ -204,6 +254,35 @@ class ChartRecordService:
             )
         return banners
 
+    @classmethod
+    def _build_export_row(cls, record: dict[str, object]) -> list[str]:
+        cases = record["cases"]
+        yang_grids: list[str] = []
+        yang_missing_values: list[str] = []
+        lunar_birthdays: list[str] = []
+        yin_grids: list[str] = []
+        yin_missing_values: list[str] = []
+
+        for case_row in cases:
+            grid_map = {grid["chart_type"]: cls._parse_snapshot(grid["grid_snapshot_json"]) for grid in case_row["grids"]}
+            yang_grids.append(grid_map["yang"]["digitString"])
+            yang_missing_values.append(grid_map["yang"]["missingDigits"])
+            lunar_birthdays.append(case_row["lunar_birthday"])
+            yin_grids.append(grid_map["yin"]["digitString"])
+            yin_missing_values.append(grid_map["yin"]["missingDigits"])
+
+        return [
+            cls._display_name(record.get("name")),
+            cls._display_or_unknown(record.get("gender")),
+            str(record.get("birth_date") or ""),
+            "\n".join(yang_grids),
+            "\n".join(yang_missing_values),
+            "\n".join(lunar_birthdays),
+            "\n".join(yin_grids),
+            "\n".join(yin_missing_values),
+            cls._format_shichen_for_export(record.get("true_solar_shichen")),
+        ]
+
     @staticmethod
     def _storage_or_empty(value: str) -> str:
         return "" if value == UNKNOWN_DISPLAY else value
@@ -212,6 +291,24 @@ class ChartRecordService:
     def _display_or_unknown(value: object) -> str:
         normalized = str(value or "").strip()
         return normalized or UNKNOWN_DISPLAY
+
+    @staticmethod
+    def _display_name(value: object) -> str:
+        normalized = str(value or "").strip()
+        return normalized or "未命名档案"
+
+    @staticmethod
+    def _format_shichen_for_export(value: object) -> str:
+        normalized = str(value or "").strip()
+        if not normalized:
+            return UNKNOWN_DISPLAY
+        if normalized == UNKNOWN_DISPLAY or normalized.endswith("时"):
+            return normalized
+        return f"{normalized}时"
+
+    @staticmethod
+    def _parse_snapshot(value: str | None) -> dict[str, object]:
+        return json.loads(value or "{}")
 
     @classmethod
     def _build_region_text_from_row(cls, row: dict[str, object]) -> str:

@@ -201,6 +201,44 @@ class ChartRecordRepository:
                 )
 
     def list_records(self, user_id: int, filters: ChartRecordFilters, page: int, page_size: int) -> tuple[int, list[dict[str, Any]]]:
+        where_clause, parameters = self._build_where_clause(user_id, filters)
+        offset = (page - 1) * page_size
+
+        with self._database.connect() as connection:
+            total = int(
+                connection.execute(
+                    f"SELECT COUNT(*) AS total FROM chart_record {where_clause}",
+                    parameters,
+                ).fetchone()["total"]
+            )
+            rows = connection.execute(
+                f"""
+                SELECT *
+                FROM chart_record
+                {where_clause}
+                ORDER BY created_at DESC, id DESC
+                LIMIT ? OFFSET ?
+                """,
+                [*parameters, page_size, offset],
+            ).fetchall()
+            return total, [dict(row) for row in rows]
+
+    def list_records_for_export(self, user_id: int, filters: ChartRecordFilters) -> list[dict[str, Any]]:
+        where_clause, parameters = self._build_where_clause(user_id, filters)
+
+        with self._database.connect() as connection:
+            rows = connection.execute(
+                f"""
+                SELECT *
+                FROM chart_record
+                {where_clause}
+                ORDER BY created_at DESC, id DESC
+                """,
+                parameters,
+            ).fetchall()
+            return [dict(row) for row in rows]
+
+    def _build_where_clause(self, user_id: int, filters: ChartRecordFilters) -> tuple[str, list[Any]]:
         conditions: list[str] = ["chart_record.user_id = ?", "chart_record.is_deleted = 0"]
         parameters: list[Any] = [user_id]
 
@@ -236,26 +274,7 @@ class ChartRecordRepository:
             conditions.append(grid_subquery)
 
         where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
-        offset = (page - 1) * page_size
-
-        with self._database.connect() as connection:
-            total = int(
-                connection.execute(
-                    f"SELECT COUNT(*) AS total FROM chart_record {where_clause}",
-                    parameters,
-                ).fetchone()["total"]
-            )
-            rows = connection.execute(
-                f"""
-                SELECT *
-                FROM chart_record
-                {where_clause}
-                ORDER BY created_at DESC, id DESC
-                LIMIT ? OFFSET ?
-                """,
-                [*parameters, page_size, offset],
-            ).fetchall()
-            return total, [dict(row) for row in rows]
+        return where_clause, parameters
 
     def get_record(self, user_id: int, record_id: int) -> dict[str, Any] | None:
         with self._database.connect() as connection:

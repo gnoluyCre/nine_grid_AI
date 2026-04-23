@@ -157,6 +157,36 @@ export async function fetchChartRecordDetail(recordId: number): Promise<ChartRec
   return (await requestJson<ChartRecordDetailResponse>(`/api/v1/chart-records/${recordId}`)) as ChartRecordDetailResponse;
 }
 
+export async function exportChartRecords(search?: ChartRecordSearchParams) {
+  const params = new URLSearchParams();
+  if (search?.name) {
+    params.set("name", search.name);
+  }
+  if (search?.digitString) {
+    params.set("digitString", search.digitString);
+  }
+  const response = await fetch(`${API_BASE_URL}/api/v1/chart-records/export${params.toString() ? `?${params.toString()}` : ""}`, {
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response));
+  }
+
+  const blob = await response.blob();
+  const contentDisposition = response.headers.get("content-disposition") ?? "";
+  const fileNameMatch = contentDisposition.match(/filename=\"?([^"]+)\"?/i);
+  const fileName = decodeURIComponent(fileNameMatch?.[1] ?? "档案批量导出.xlsx");
+  const objectUrl = window.URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = objectUrl;
+  anchor.download = fileName;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  window.URL.revokeObjectURL(objectUrl);
+}
+
 export async function deleteChartRecord(recordId: number): Promise<void> {
   await requestJson<null>(`/api/v1/chart-records/${recordId}`, {
     method: "DELETE",
