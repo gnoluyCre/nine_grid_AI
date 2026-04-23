@@ -1,5 +1,5 @@
 // input: 表单组件、地区接口、鉴权状态与排盘接口。
-// output: 精简后的首页简介、录入与服务说明布局。
+// output: 精简后的首页简介、录入、服务说明与旧版风格系统状态布局。
 // pos: 前端首页页面容器。
 // 一旦我被更新务必更新我的开头注释以及所属文件夹的 md
 import { useEffect, useMemo, useState } from "react";
@@ -206,26 +206,11 @@ export function InputPage() {
           </div>
         </section>
 
-        <section className="grid gap-5 lg:grid-cols-[minmax(0,1.08fr)_minmax(320px,0.72fr)] lg:items-start">
+        <section className="grid gap-5 lg:grid-cols-[minmax(0,1.08fr)_minmax(320px,0.72fr)] lg:items-stretch">
           <div className="space-y-4">
             {editingContext ? (
               <section className="rounded-[22px] border border-amber-200 bg-amber-50/90 px-4 py-3 text-sm text-amber-900 shadow-sm">
                 正在编辑档案 #{editingContext.recordId}。修改原始信息后重新排盘，将直接覆盖该档案。
-              </section>
-            ) : null}
-            {regionError ? (
-              <section className="rounded-[20px] border border-rose-200 bg-rose-50/90 px-4 py-3 text-sm text-rose-700 shadow-sm">
-                地区加载失败：{regionError}
-              </section>
-            ) : null}
-            {!regionError && regionNotice ? (
-              <section className="rounded-[20px] border border-amber-200 bg-amber-50/90 px-4 py-3 text-sm text-amber-700 shadow-sm">
-                地区提示：{regionNotice}
-              </section>
-            ) : null}
-            {submitError ? (
-              <section className="rounded-[20px] border border-rose-200 bg-rose-50/90 px-4 py-3 text-sm text-rose-700 shadow-sm">
-                提交失败：{submitError}
               </section>
             ) : null}
             <BirthForm
@@ -238,10 +223,10 @@ export function InputPage() {
             />
           </div>
 
-          <aside className="space-y-4">
-            <section className="card-surface p-5">
+          <aside className="flex h-full flex-col gap-4">
+            <section className="card-surface flex-1 p-5">
               <p className="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-plum/55">服务说明</p>
-              <div className="space-y-3.5">
+              <div className="flex h-[calc(100%-2rem)] flex-col justify-between gap-4">
                 <ProductStep
                   index="01"
                   title="录入出生信息"
@@ -263,6 +248,29 @@ export function InputPage() {
                   description="预留 AI 解读能力，后续支持自动分析个性、天赋与参考说明。"
                 />
               </div>
+            </section>
+            <section className="card-surface mt-auto p-5">
+              <p className="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-plum/55">系统状态</p>
+              <div className="space-y-3">
+                <StatusRow
+                  label="地区服务"
+                  tone={regionError ? "danger" : regionNotice ? "warning" : "success"}
+                  value={regionError ? "加载异常" : regionNotice ? "初始化异常" : "正常可用"}
+                />
+                <StatusRow
+                  label="排盘提交"
+                  tone={submitError ? "danger" : submitting ? "warning" : "neutral"}
+                  value={submitError ? "提交失败" : submitting ? "排盘中" : "等待提交"}
+                />
+                <StatusRow
+                  label="结果结构"
+                  tone="success"
+                  value="支持方案切换与阴阳双格"
+                />
+              </div>
+              {regionError ? <p className="mt-4 text-sm text-rose-700">地区加载失败：{regionError}</p> : null}
+              {regionNotice ? <p className="mt-4 text-sm text-amber-700">地区提示：{regionNotice}</p> : null}
+              {submitError ? <p className="mt-3 text-sm text-rose-700">提交失败：{submitError}</p> : null}
             </section>
           </aside>
         </section>
@@ -311,6 +319,32 @@ function ProductStep({
         <p className="font-display text-[1.05rem] font-bold text-ink">{title}</p>
         <p className="mt-1 text-sm leading-5 text-ink/62">{description}</p>
       </div>
+    </div>
+  );
+}
+
+function StatusRow({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone: "success" | "warning" | "danger" | "neutral";
+}) {
+  const toneClassName =
+    tone === "success"
+      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+      : tone === "warning"
+        ? "bg-amber-50 text-amber-700 border-amber-200"
+        : tone === "danger"
+          ? "bg-rose-50 text-rose-700 border-rose-200"
+          : "bg-slate-50 text-slate-600 border-slate-200";
+
+  return (
+    <div className="flex items-center justify-between gap-4 rounded-2xl border border-[#f0e8f6] bg-white/75 px-4 py-3">
+      <p className="text-sm font-medium text-ink/65">{label}</p>
+      <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${toneClassName}`}>{value}</span>
     </div>
   );
 }
