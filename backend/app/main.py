@@ -18,7 +18,7 @@ from .database import Database
 from .repositories import AuthRepository, ChartRecordRepository
 from .runtime import ensure_project_root
 from .schemas import ErrorResponse
-from .services import AuthError, AuthService, BirthChartService, ChartRecordService, MailService, SmtpMailService
+from .services import AuthError, AuthService, BatchExportService, BirthChartService, ChartRecordService, MailService, SmtpMailService
 from .services.chart_service import ChartRequestError
 
 
@@ -71,12 +71,14 @@ def create_app(db_path: str | Path | None = None, mail_service: MailService | No
     database = Database(db_path or resolve_database_path())
     database.initialize()
     chart_service = BirthChartService()
+    batch_export_service = BatchExportService(chart_service)
     auth_repository = AuthRepository(database)
     auth_service = AuthService(auth_repository, mail_service or SmtpMailService.from_env())
     chart_record_repository = ChartRecordRepository(database)
     chart_record_service = ChartRecordService(chart_record_repository, chart_service)
     app.state.database = database
     app.state.auth_service = auth_service
+    app.state.batch_export_service = batch_export_service
     app.state.chart_service = chart_service
     app.state.chart_record_service = chart_record_service
     app.mount("/assets", StaticFiles(directory=ensure_project_root() / "assets"), name="assets")

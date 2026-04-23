@@ -4,6 +4,7 @@
 # 一旦我被更新务必更新我的开头注释以及所属文件夹的 md
 from .errors import ErrorResponse
 from .requests import (
+    BatchExportRequest,
     BirthChartRequest,
     LoginRequest,
     PasswordResetConfirmRequest,
@@ -13,6 +14,7 @@ from .requests import (
     UpdateProfileRequest,
 )
 from .responses import (
+    BatchExportJobResponse,
     BirthChartApiResponse,
     ChartRecordDetailResponse,
     ChartRecordListItem,
@@ -24,6 +26,8 @@ from .responses import (
 
 __all__ = [
     "BirthChartApiResponse",
+    "BatchExportJobResponse",
+    "BatchExportRequest",
     "BirthChartRequest",
     "ChartRecordDetailResponse",
     "ChartRecordListItem",

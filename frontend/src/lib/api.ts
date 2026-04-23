@@ -3,6 +3,8 @@
 // pos: 前端 API 访问层。
 // 一旦我被更新务必更新我的开头注释以及所属文件夹的 md
 import type {
+  BatchExportJobResponse,
+  BatchExportRequest,
   BirthChartApiResponse,
   BirthFormValue,
   ChartRecordDetailResponse,
@@ -64,6 +66,43 @@ export function resolveAvatarUrl(avatarKey: string) {
 
 export async function fetchRegions(): Promise<RegionOption[]> {
   return (await requestJson<RegionOption[]>("/api/v1/regions")) as RegionOption[];
+}
+
+export async function createBatchExport(payload: BatchExportRequest): Promise<BatchExportJobResponse> {
+  return (await requestJson<BatchExportJobResponse>("/api/v1/batch-exports", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  })) as BatchExportJobResponse;
+}
+
+export async function fetchBatchExportStatus(jobId: string): Promise<BatchExportJobResponse> {
+  return (await requestJson<BatchExportJobResponse>(`/api/v1/batch-exports/${jobId}`)) as BatchExportJobResponse;
+}
+
+export async function downloadBatchExportFile(jobId: string) {
+  const response = await fetch(`${API_BASE_URL}/api/v1/batch-exports/${jobId}/download`, {
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response));
+  }
+
+  const blob = await response.blob();
+  const contentDisposition = response.headers.get("content-disposition") ?? "";
+  const fileNameMatch = contentDisposition.match(/filename=\"?([^"]+)\"?/i);
+  const fileName = decodeURIComponent(fileNameMatch?.[1] ?? `九宫格批量测算_${jobId}.xlsx`);
+  const objectUrl = window.URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = objectUrl;
+  anchor.download = fileName;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  window.URL.revokeObjectURL(objectUrl);
 }
 
 export async function createBirthChart(payload: BirthFormValue): Promise<BirthChartApiResponse> {

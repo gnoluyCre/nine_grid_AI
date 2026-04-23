@@ -5,8 +5,11 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Query, Request, Response
+from fastapi.responses import FileResponse
 
 from ..schemas import (
+    BatchExportJobResponse,
+    BatchExportRequest,
     BirthChartApiResponse,
     BirthChartRequest,
     ChartRecordDetailResponse,
@@ -38,6 +41,26 @@ def list_regions(request: Request) -> list[RegionOption]:
 @router.post("/charts", response_model=BirthChartApiResponse)
 def create_birth_chart(request: BirthChartRequest, http_request: Request) -> BirthChartApiResponse:
     return http_request.app.state.chart_service.build_birth_chart(request)
+
+
+@router.post("/batch-exports", response_model=BatchExportJobResponse)
+def create_batch_export(request: BatchExportRequest, http_request: Request) -> BatchExportJobResponse:
+    return http_request.app.state.batch_export_service.create_job(request)
+
+
+@router.get("/batch-exports/{job_id}", response_model=BatchExportJobResponse)
+def get_batch_export(job_id: str, http_request: Request) -> BatchExportJobResponse:
+    return http_request.app.state.batch_export_service.get_job(job_id)
+
+
+@router.get("/batch-exports/{job_id}/download")
+def download_batch_export(job_id: str, http_request: Request) -> FileResponse:
+    file_path, file_name = http_request.app.state.batch_export_service.get_download_file(job_id)
+    return FileResponse(
+        path=file_path,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        filename=file_name,
+    )
 
 
 @router.post("/auth/register/send-code", response_model=MessageResponse)

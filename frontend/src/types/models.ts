@@ -101,6 +101,25 @@ export interface MessageResponse {
   message: string;
 }
 
+export type BatchExportStatus = "pending" | "running" | "completed" | "failed";
+
+export interface BatchExportRequest {
+  startDate: string;
+  endDate: string;
+}
+
+export interface BatchExportJobResponse {
+  jobId: string;
+  status: BatchExportStatus;
+  downloadReady: boolean;
+  message?: string | null;
+  fileName?: string | null;
+  totalDays: number;
+  processedDays: number;
+  progressPercent: number;
+  currentDate?: string | null;
+}
+
 export interface UpdateProfileRequest {
   nickname: string;
 }

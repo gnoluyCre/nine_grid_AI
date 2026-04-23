@@ -15,8 +15,11 @@ interface BirthFormProps {
   regionTree: RegionTreeNode[];
   onChange: (nextValue: BirthFormValue) => void;
   onSubmit: () => void;
+  onBatchExport?: () => void;
   loading?: boolean;
   editing?: boolean;
+  batchExportDisabled?: boolean;
+  batchExportHint?: string;
 }
 
 const GENDER_OPTIONS = ["男", "女"];
@@ -25,7 +28,17 @@ const MONTH_OPTIONS = Array.from({ length: 12 }, (_, index) => index + 1);
 const HOUR_OPTIONS = Array.from({ length: 24 }, (_, index) => index);
 const MINUTE_OPTIONS = Array.from({ length: 60 }, (_, index) => index);
 
-export function BirthForm({ value, regionTree, onChange, onSubmit, loading = false, editing = false }: BirthFormProps) {
+export function BirthForm({
+  value,
+  regionTree,
+  onChange,
+  onSubmit,
+  onBatchExport,
+  loading = false,
+  editing = false,
+  batchExportDisabled = false,
+  batchExportHint = "",
+}: BirthFormProps) {
   const [activePicker, setActivePicker] = useState<"date" | "time" | null>(null);
   const selectedRegion = useMemo(() => findRegionSelectionById(regionTree, value.regionId), [regionTree, value.regionId]);
   const dateDraft = useDateDraft(value.birthDate);
@@ -130,7 +143,16 @@ export function BirthForm({ value, regionTree, onChange, onSubmit, loading = fal
           </div>
         </div>
 
-        <SubmitAction onSubmit={onSubmit} loading={loading} editing={editing} disabled={!canSubmit} />
+        <SubmitAction
+          onSubmit={onSubmit}
+          onSecondaryAction={onBatchExport}
+          loading={loading}
+          editing={editing}
+          disabled={!canSubmit}
+          secondaryLabel="批量测算"
+          secondaryDisabled={loading || batchExportDisabled}
+          secondaryHint={batchExportHint}
+        />
       </div>
 
       <PickerSheet

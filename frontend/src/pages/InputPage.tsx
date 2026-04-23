@@ -4,9 +4,12 @@
 // 一旦我被更新务必更新我的开头注释以及所属文件夹的 md
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { BatchExportDialog } from "../components/BatchExportDialog";
 import { BirthForm } from "../components/BirthForm";
+import { ConfirmDialog } from "../components/ConfirmDialog";
 import { UserAccountPanel } from "../components/UserAccountPanel";
 import { useAuth } from "../context/AuthContext";
+import { useBatchExport } from "../context/BatchExportContext";
 import { REGION_OPTIONS } from "../fixtures/sampleCases";
 import {
   clearBirthFormDraft,
@@ -19,8 +22,20 @@ import {
   saveBirthFormDraft,
 } from "../lib/formState";
 import { buildRegionTree } from "../lib/regionTree";
-import { createBirthChart, createChartRecord, fetchRegions, updateChartRecord } from "../lib/api";
-import type { BirthChartApiResponse, BirthFormValue, ChartRecordDetailResponse, EditingRecordContext, RegionOption } from "../types/models";
+import {
+  createBatchExport,
+  createBirthChart,
+  createChartRecord,
+  fetchRegions,
+  updateChartRecord,
+} from "../lib/api";
+import type {
+  BirthChartApiResponse,
+  BirthFormValue,
+  ChartRecordDetailResponse,
+  EditingRecordContext,
+  RegionOption,
+} from "../types/models";
 
 interface InputRouteState {
   returnMode?: "restore-input" | "new-record";
@@ -31,6 +46,7 @@ export function InputPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const { isAuthenticated, refreshUser } = useAuth();
+  const { trackedJob, setTrackedJob, downloadTrackedFile, downloadBusy: batchDownloadBusy, isTrackedJobDownloaded } = useBatchExport();
   const [formValue, setFormValue] = useState<BirthFormValue>(() => loadBirthFormDraft() ?? DEFAULT_FORM_VALUE);
   const [editingContext, setEditingContext] = useState<EditingRecordContext | null>(() => loadEditingRecordContext());
   const [regions, setRegions] = useState<RegionOption[]>(REGION_OPTIONS);
@@ -38,6 +54,12 @@ export function InputPage() {
   const [regionNotice, setRegionNotice] = useState<string>("");
   const [submitError, setSubmitError] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
+  const [batchDialogOpen, setBatchDialogOpen] = useState(false);
+  const [batchReplaceConfirmOpen, setBatchReplaceConfirmOpen] = useState(false);
+  const [batchStartDate, setBatchStartDate] = useState("");
+  const [batchEndDate, setBatchEndDate] = useState("");
+  const [batchDialogError, setBatchDialogError] = useState("");
+  const [batchSubmitting, setBatchSubmitting] = useState(false);
   const regionTree = useMemo(() => buildRegionTree(regions), [regions]);
 
   useEffect(() => {
@@ -166,6 +188,80 @@ export function InputPage() {
     }
   }
 
+  async function handleBatchExportSubmit() {
+    if (!batchStartDate || !batchEndDate) {
+      setBatchDialogError("请选择开始日期和截止日期后再导出。");
+      return;
+    }
+
+    if (batchStartDate > batchEndDate) {
+      setBatchDialogError("开始日期不能晚于截止日期。");
+      return;
+    }
+
+    setBatchSubmitting(true);
+    setBatchDialogError("");
+
+    try {
+      const payload = await createBatchExport({
+        startDate: batchStartDate,
+        endDate: batchEndDate,
+      });
+      setTrackedJob(payload);
+      setBatchDialogOpen(false);
+    } catch (error) {
+      setBatchDialogError(error instanceof Error ? error.message : "批量导出创建失败");
+      return;
+    } finally {
+      setBatchSubmitting(false);
+    }
+  }
+
+  async function handleBatchDownload() {
+    if (!trackedJob) {
+      return;
+    }
+    try {
+      await downloadTrackedFile();
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : "批量导出文件下载失败");
+    }
+  }
+
+  function openBatchDialog() {
+    if (trackedJob?.status === "running" || trackedJob?.status === "pending") {
+      return;
+    }
+    if (trackedJob?.status === "completed" && trackedJob.downloadReady && !isTrackedJobDownloaded) {
+      setBatchReplaceConfirmOpen(true);
+      return;
+    }
+    setBatchDialogError("");
+    setBatchDialogOpen(true);
+  }
+
+  function closeBatchDialog() {
+    if (batchSubmitting) {
+      return;
+    }
+    setBatchDialogOpen(false);
+    setBatchDialogError("");
+  }
+
+  function confirmReplaceBatchTask() {
+    setBatchReplaceConfirmOpen(false);
+    setBatchDialogError("");
+    setBatchDialogOpen(true);
+  }
+
+  const batchStatusMeta = getBatchStatusMeta(trackedJob);
+  const batchButtonHint =
+    trackedJob?.status === "running" || trackedJob?.status === "pending"
+      ? "当前已有批量导出任务正在执行。"
+      : trackedJob?.status === "completed" && trackedJob.downloadReady && !isTrackedJobDownloaded
+        ? "当前有一份可下载的批量导出文件，继续前会先弹出确认。"
+        : undefined;
+
   return (
     <main className="min-h-screen px-4 py-5 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl space-y-5">
@@ -218,8 +314,11 @@ export function InputPage() {
               regionTree={regionTree}
               onChange={setFormValue}
               onSubmit={handleSubmit}
+              onBatchExport={openBatchDialog}
               loading={submitting}
               editing={Boolean(editingContext)}
+              batchExportDisabled={trackedJob?.status === "running" || trackedJob?.status === "pending"}
+              batchExportHint={batchButtonHint}
             />
           </div>
 
@@ -267,14 +366,62 @@ export function InputPage() {
                   tone="success"
                   value="支持方案切换与阴阳双格"
                 />
+                <StatusRow
+                  label="批量导出状态"
+                  tone={batchStatusMeta.tone}
+                  value={batchStatusMeta.value}
+                  actionLabel={trackedJob?.downloadReady ? (batchDownloadBusy ? "下载中..." : "下载") : undefined}
+                  onAction={trackedJob?.downloadReady ? handleBatchDownload : undefined}
+                  actionDisabled={!trackedJob?.downloadReady || batchDownloadBusy}
+                />
+                {trackedJob ? (
+                  <div className="rounded-2xl border border-[#f0e8f6] bg-white/72 px-4 py-3">
+                    <div className="mb-2 flex items-center justify-between gap-3 text-xs font-semibold uppercase tracking-[0.16em] text-plum/55">
+                      <span>批量导出进度</span>
+                      <span>{trackedJob.progressPercent}%</span>
+                    </div>
+                    <div className="h-2 overflow-hidden rounded-full bg-[#efe7f7]">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-plum to-iris transition-[width] duration-500"
+                        style={{ width: `${trackedJob.progressPercent}%` }}
+                      />
+                    </div>
+                    <p className="mt-2 text-sm text-ink/62">
+                      已完成 {trackedJob.processedDays} / {trackedJob.totalDays} 天
+                      {trackedJob.currentDate ? `，当前处理到 ${trackedJob.currentDate}` : ""}
+                    </p>
+                  </div>
+                ) : null}
               </div>
               {regionError ? <p className="mt-4 text-sm text-rose-700">地区加载失败：{regionError}</p> : null}
               {regionNotice ? <p className="mt-4 text-sm text-amber-700">地区提示：{regionNotice}</p> : null}
               {submitError ? <p className="mt-3 text-sm text-rose-700">提交失败：{submitError}</p> : null}
+              {trackedJob?.status === "failed" && trackedJob.message ? <p className="mt-3 text-sm text-rose-700">批量导出失败：{trackedJob.message}</p> : null}
             </section>
           </aside>
         </section>
       </div>
+      <BatchExportDialog
+        open={batchDialogOpen}
+        startDate={batchStartDate}
+        endDate={batchEndDate}
+        loading={batchSubmitting}
+        error={batchDialogError}
+        onClose={closeBatchDialog}
+        onChangeStartDate={setBatchStartDate}
+        onChangeEndDate={setBatchEndDate}
+        onSubmit={handleBatchExportSubmit}
+      />
+      <ConfirmDialog
+        open={batchReplaceConfirmOpen}
+        title="继续新的批量导出？"
+        description="当前存在一份尚未下载的批量导出文件。若继续，将开始新的批量导出任务，并把首页状态切换到新任务。旧文件仍会保留到系统自然过期。"
+        confirmLabel="继续导出"
+        cancelLabel="先不导出"
+        loading={false}
+        onConfirm={confirmReplaceBatchTask}
+        onClose={() => setBatchReplaceConfirmOpen(false)}
+      />
     </main>
   );
 }
@@ -327,10 +474,16 @@ function StatusRow({
   label,
   value,
   tone,
+  actionLabel,
+  onAction,
+  actionDisabled = false,
 }: {
   label: string;
   value: string;
   tone: "success" | "warning" | "danger" | "neutral";
+  actionLabel?: string;
+  onAction?: () => void;
+  actionDisabled?: boolean;
 }) {
   const toneClassName =
     tone === "success"
@@ -344,7 +497,44 @@ function StatusRow({
   return (
     <div className="flex items-center justify-between gap-4 rounded-2xl border border-[#f0e8f6] bg-white/75 px-4 py-3">
       <p className="text-sm font-medium text-ink/65">{label}</p>
-      <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${toneClassName}`}>{value}</span>
+      <div className="flex items-center gap-2">
+        {actionLabel && onAction ? (
+          <button
+            type="button"
+            onClick={onAction}
+            disabled={actionDisabled}
+            className="rounded-full border border-plum/15 bg-white px-3 py-1 text-xs font-semibold text-plum transition hover:bg-plum/5 disabled:cursor-not-allowed disabled:opacity-55"
+          >
+            {actionLabel}
+          </button>
+        ) : null}
+        <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${toneClassName}`}>{value}</span>
+      </div>
     </div>
   );
+}
+
+function getBatchStatusMeta(job: { status: string; message?: string | null } | null) {
+  if (job?.status === "running" || job?.status === "pending") {
+    return {
+      tone: "warning" as const,
+      value: job.status === "pending" ? "待导出" : "导出中",
+    };
+  }
+  if (job?.status === "completed") {
+    return {
+      tone: "success" as const,
+      value: "导出已完成",
+    };
+  }
+  if (job?.status === "failed") {
+    return {
+      tone: "danger" as const,
+      value: "导出失败",
+    };
+  }
+  return {
+    tone: "neutral" as const,
+    value: "待导出",
+  };
 }

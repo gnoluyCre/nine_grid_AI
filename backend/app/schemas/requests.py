@@ -17,6 +17,13 @@ class BirthChartRequest(BaseModel):
     regionId: str = ""
 
 
+class BatchExportRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    startDate: str = Field(min_length=1)
+    endDate: str = Field(min_length=1)
+
+
 class RegisterSendCodeRequest(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 

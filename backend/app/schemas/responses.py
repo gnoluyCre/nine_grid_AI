@@ -21,6 +21,7 @@ CellMarkerPosition = Literal[
     "bottom",
 ]
 ZiHourType = Literal["前子时", "后子时", "非子时"]
+BatchExportStatus = Literal["pending", "running", "completed", "failed"]
 
 
 class RegionOption(BaseModel):
@@ -111,6 +112,18 @@ class BirthChartApiResponse(BaseModel):
     summary: ResultSummaryViewModel
     banners: list[BannerViewModel]
     cases: list[ApiCaseViewModel]
+
+
+class BatchExportJobResponse(BaseModel):
+    jobId: str
+    status: BatchExportStatus
+    downloadReady: bool
+    message: str | None = None
+    fileName: str | None = None
+    totalDays: int = 0
+    processedDays: int = 0
+    progressPercent: int = 0
+    currentDate: str | None = None
 
 
 class ChartRecordListItem(BaseModel):
