@@ -1,5 +1,5 @@
-# input: 服务层产出的排盘结果、档案结果与用户信息字段。
-# output: API 对外响应模型。
+# input: 服务层产出的排盘结果、档案列表/详情结果与用户信息字段。
+# output: API 对外响应模型与档案列表/结果页展示字段。
 # pos: API 输出模型定义层。
 # 一旦我被更新务必更新我的开头注释以及所属文件夹的 md
 from __future__ import annotations
@@ -103,7 +103,6 @@ class ApiCaseChartsViewModel(BaseModel):
 class ApiCaseViewModel(BaseModel):
     index: int
     label: str
-    dateRelation: str
     metrics: CaseMetricsViewModel
     charts: ApiCaseChartsViewModel
 
@@ -128,6 +127,8 @@ class ChartRecordListItem(BaseModel):
     trueSolarDatetimeText: str
     trueSolarShichen: str
     createdAt: str
+    firstCaseSolarBirthday: str
+    firstCaseLunarBirthday: str
     firstCaseYangDigitString: str
     firstCaseYangMissingDigits: str
     firstCaseYinDigitString: str

@@ -11,10 +11,10 @@ class BirthChartRequest(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
     name: str | None = None
-    gender: str = Field(min_length=1)
+    gender: str = ""
     birthDate: str = Field(min_length=1)
-    birthTime: str = Field(min_length=1)
-    regionId: str = Field(min_length=1)
+    birthTime: str = ""
+    regionId: str = ""
 
 
 class RegisterSendCodeRequest(BaseModel):

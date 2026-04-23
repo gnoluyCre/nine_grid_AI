@@ -1,5 +1,5 @@
 # input: 核心算法包、地区目录与排盘请求模型。
-# output: 前端可直接展示的排盘结果视图模型与阴阳格派生字段。
+# output: 前端可直接展示的排盘结果视图模型与阴阳格派生字段，并兼容时辰/地区缺失时的“未知”口径。
 # pos: 后端排盘计算服务层。
 # 一旦我被更新务必更新我的开头注释以及所属文件夹的 md
 from __future__ import annotations
@@ -48,6 +48,9 @@ LUNAR_LEAP_BANNER = BannerViewModel(
     title="农历闰月提示",
     description="当前结果存在农历闰月方案，闰月补 1 会参与阴格正式计算，并可能影响最终串与灵魂结构。",
 )
+UNKNOWN_DISPLAY = "未知"
+FALLBACK_BIRTH_TIME = "12:00"
+FALLBACK_GENDER = "男"
 
 
 class ChartRequestError(ValueError):
@@ -81,45 +84,52 @@ class BirthChartService:
         return self.build_computed_birth_chart(request).response
 
     def build_computed_birth_chart(self, request: BirthChartRequest) -> ComputedBirthChart:
-        region = self._region_catalog.get_by_id(request.regionId)
-        if region is None:
-            raise ChartRequestError(f"地区不存在: {request.regionId}")
+        calculation_region = self._resolve_region_for_calculation(request.regionId)
+        can_compute_true_solar = bool(request.birthTime and request.regionId)
+        display_gender = self._normalize_display_gender(request.gender)
+        calculation_gender = request.gender if request.gender in {"男", "女"} else FALLBACK_GENDER
 
         try:
             result = calculate_birth_chart(
                 date_input=request.birthDate,
-                time_input=request.birthTime,
-                gender=request.gender,
+                time_input=request.birthTime or FALLBACK_BIRTH_TIME,
+                gender=calculation_gender,
                 region_selection=RegionSelection(
-                    province_name=region.province_name,
-                    city_name=region.city_name,
-                    district_name=region.district_name,
-                    longitude=region.longitude,
+                    province_name=calculation_region.province_name,
+                    city_name=calculation_region.city_name,
+                    district_name=calculation_region.district_name,
+                    longitude=calculation_region.longitude,
                 ),
             )
         except ValueError as exc:
             raise ChartRequestError(str(exc)) from exc
 
+        response_result = {
+            **result,
+            "zi_hour_type": result["zi_hour_type"] if can_compute_true_solar else "非子时",
+            "cases": result["cases"] if can_compute_true_solar else result["cases"][:1],
+        }
+
         summary = ResultSummaryViewModel(
-            name=request.name,
-            gender=result["gender"],
-            inputBirthDate=result["input_birth_date"],
-            inputBirthTime=result["input_birth_time"],
-            regionText=" ".join([region.province_name, region.city_name, region.district_name]),
-            trueSolarDatetimeText=self._format_datetime(result["solar_time"]["true_solar_datetime"]),
-            trueSolarShichen=result["true_solar_shichen"],
-            ziHourType=result["zi_hour_type"],
+            name=self._resolve_record_name(request.name),
+            gender=display_gender,
+            inputBirthDate=response_result["input_birth_date"],
+            inputBirthTime=request.birthTime,
+            regionText=self._build_region_text(request.regionId, calculation_region),
+            trueSolarDatetimeText=self._format_true_solar_datetime(response_result, can_compute_true_solar),
+            trueSolarShichen=self._format_true_solar_shichen(response_result["true_solar_shichen"], can_compute_true_solar),
+            ziHourType=response_result["zi_hour_type"],
         )
 
         cases = [
-            self._build_case(case_index, case_data)
-            for case_index, case_data in enumerate(result["cases"])
+            self._build_case(case_index, case_data, can_compute_true_solar)
+            for case_index, case_data in enumerate(response_result["cases"])
         ]
-        banners = self._build_banners(result)
+        banners = self._build_banners(response_result, can_compute_true_solar)
         response = BirthChartApiResponse(summary=summary, banners=banners, cases=cases)
-        return ComputedBirthChart(response=response, region=region, raw_result=result)
+        return ComputedBirthChart(response=response, region=calculation_region, raw_result=response_result)
 
-    def _build_case(self, case_index: int, case_data: dict) -> ApiCaseViewModel:
+    def _build_case(self, case_index: int, case_data: dict, can_compute_true_solar: bool) -> ApiCaseViewModel:
         case_result = case_data["result"]
         metrics = CaseMetricsViewModel(
             solarBirthday=case_result["solar_birthday"],
@@ -128,7 +138,7 @@ class BirthChartService:
                 case_result["lunar_birthday"], case_result["lunar_is_leap_month"]
             ),
             age=case_result["age"],
-            trueSolarShichen=case_result["true_solar_shichen"],
+            trueSolarShichen=case_result["true_solar_shichen"] if can_compute_true_solar else UNKNOWN_DISPLAY,
             lunarIsLeapMonth=case_result["lunar_is_leap_month"],
         )
         yang_digit_string, yang_missing_digits = case_result["solar"]
@@ -140,7 +150,7 @@ class BirthChartService:
             missing_digits=yang_missing_digits,
             base_digits=case_result["solar_base_digits"],
             suffix_digits=case_result["solar_suffix_digits"],
-            half_supplement=case_result["half_supplement"],
+            half_supplement=case_result["half_supplement"] if can_compute_true_solar else UNKNOWN_DISPLAY,
             missing_attributes=case_result["solar_attributes"],
             missing_count=case_result["solar_missing_count"],
         )
@@ -160,7 +170,7 @@ class BirthChartService:
             missing_digits=yin_missing_digits,
             base_digits=lunar_calc["base_digits"],
             suffix_digits=lunar_calc["suffix_digits"],
-            half_supplement=case_result["half_supplement"],
+            half_supplement=case_result["half_supplement"] if can_compute_true_solar else UNKNOWN_DISPLAY,
             missing_attributes=case_result["lunar_attributes"],
             missing_count=case_result["lunar_missing_count"],
             po_raw=lunar_po,
@@ -174,7 +184,6 @@ class BirthChartService:
         return ApiCaseViewModel(
             index=case_index,
             label=case_data["label"],
-            dateRelation=case_data["date_relation"],
             metrics=metrics,
             charts=charts,
         )
@@ -262,9 +271,9 @@ class BirthChartService:
         )
 
     @staticmethod
-    def _build_banners(result: dict) -> list[BannerViewModel]:
+    def _build_banners(result: dict, can_compute_true_solar: bool) -> list[BannerViewModel]:
         banners: list[BannerViewModel] = []
-        if result["zi_hour_type"] != "非子时":
+        if can_compute_true_solar and result["zi_hour_type"] != "非子时":
             banners.append(ZI_HOUR_BANNER)
         if any(case["result"]["lunar_is_leap_month"] for case in result["cases"]):
             banners.append(LUNAR_LEAP_BANNER)
@@ -287,3 +296,42 @@ class BirthChartService:
         year_text, month_text, day_text = lunar_birthday.split("-")
         month_label = f"闰{int(month_text)}月" if is_leap_month else f"{int(month_text)}月"
         return f"{year_text}年{month_label}{int(day_text)}日"
+
+    def _resolve_region_for_calculation(self, region_id: str) -> RegionRecord:
+        if region_id:
+            region = self._region_catalog.get_by_id(region_id)
+            if region is None:
+                raise ChartRequestError(f"地区不存在: {region_id}")
+            return region
+
+        fallback_region = next(iter(self._region_catalog.list_regions()), None)
+        if fallback_region is None:
+            raise ChartRequestError("地区数据不可用")
+        return fallback_region
+
+    @staticmethod
+    def _resolve_record_name(name: str | None) -> str:
+        normalized = (name or "").strip()
+        if normalized:
+            return normalized
+        return f"档案{str(int(datetime.now().timestamp() * 1000))[-4:]}"
+
+    @staticmethod
+    def _normalize_display_gender(gender: str) -> str:
+        return gender if gender in {"男", "女"} else UNKNOWN_DISPLAY
+
+    @staticmethod
+    def _build_region_text(region_id: str, region: RegionRecord) -> str:
+        if not region_id:
+            return UNKNOWN_DISPLAY
+        return " ".join([region.province_name, region.city_name, region.district_name])
+
+    @staticmethod
+    def _format_true_solar_datetime(result: dict, can_compute_true_solar: bool) -> str:
+        if not can_compute_true_solar:
+            return UNKNOWN_DISPLAY
+        return BirthChartService._format_datetime(result["solar_time"]["true_solar_datetime"])
+
+    @staticmethod
+    def _format_true_solar_shichen(value: str, can_compute_true_solar: bool) -> str:
+        return value if can_compute_true_solar else UNKNOWN_DISPLAY

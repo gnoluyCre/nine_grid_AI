@@ -1,5 +1,5 @@
 // input: 地区树、当前选择值与确认回调。
-// output: 三级地区联动选择器。
+// output: 支持留空的三级地区联动选择器。
 // pos: 出生地区录入专用选择组件。
 // 一旦我被更新务必更新我的开头注释以及所属文件夹的 md
 import { useEffect, useMemo, useState } from "react";
@@ -93,7 +93,18 @@ export function RegionPicker({ regionTree, value, onChange }: RegionPickerProps)
       <div className="space-y-3">
         <div className="flex items-center justify-between gap-3">
           <span className="block text-xs font-semibold uppercase tracking-[0.18em] text-plum/60">地区</span>
-          <span className="text-xs text-ink/48">未修改时默认使用当前地区</span>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-ink/48">选填，未填写则相关结果显示未知</span>
+            {value ? (
+              <button
+                type="button"
+                onClick={() => onChange("")}
+                className="text-xs font-medium text-plum/58 transition hover:text-plum"
+              >
+                清空地区
+              </button>
+            ) : null}
+          </div>
         </div>
         <button type="button" className="picker-trigger w-full text-left" onClick={() => setOpen(true)}>
           <span>
@@ -111,7 +122,7 @@ export function RegionPicker({ regionTree, value, onChange }: RegionPickerProps)
       <PickerSheet
         open={open}
         title="选择出生地区"
-        description="基于本地行政区数据逐级选择省、市、区，系统会按最终地区经度计算真太阳时。"
+        description="基于本地行政区数据逐级选择省、市、区；未填写地区时不会计算真太阳时。"
         onClose={() => {
           setDraft(selectedValue);
           setOpen(false);

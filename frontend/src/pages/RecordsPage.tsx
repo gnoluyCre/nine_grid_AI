@@ -1,5 +1,5 @@
 // input: 鉴权状态、档案 API、路由跳转与详情/确认弹窗组件。
-// output: 档案管理列表、搜索、详情查看、编辑和删除流程。
+// output: 含特殊案例标签与居中操作栏的紧凑档案列表。
 // pos: 前端档案管理页面容器。
 // 一旦我被更新务必更新我的开头注释以及所属文件夹的 md
 import { useEffect, useState } from "react";
@@ -10,6 +10,7 @@ import { UserAccountPanel } from "../components/UserAccountPanel";
 import { useAuth } from "../context/AuthContext";
 import { deleteChartRecord, fetchChartRecordDetail, fetchChartRecords } from "../lib/api";
 import { saveEditingRecordContext, saveNewRecordIntent } from "../lib/formState";
+import { formatShichenLabel, formatUnknownDisplay, UNKNOWN_DISPLAY } from "../lib/shichen";
 import type { ChartRecordDetailResponse, ChartRecordListItem, ChartRecordSearchParams } from "../types/models";
 
 const PAGE_SIZE = 10;
@@ -132,7 +133,7 @@ export function RecordsPage() {
         recordId,
         formValue: {
           name: detail.name ?? "",
-          gender: detail.gender,
+          gender: detail.gender === UNKNOWN_DISPLAY ? "" : detail.gender,
           birthDate: detail.birthDate,
           birthTime: detail.birthTime,
           regionId: detail.regionId,
@@ -281,48 +282,59 @@ export function RecordsPage() {
               </div>
             ) : (
               items.map((item) => (
-                <article key={item.id} className="rounded-[28px] border border-line/80 bg-white/82 p-5 shadow-sm">
-                  <div className="flex flex-wrap items-start justify-between gap-4">
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-plum/50">档案 #{item.id}</p>
-                      <h2 className="mt-2 font-display text-2xl font-extrabold tracking-tight text-ink">
-                        {item.name || "未命名档案"}
-                      </h2>
-                      <p className="mt-2 text-sm text-ink/60">
-                        {item.birthDate} · {item.gender} · {item.ziHourType}
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={() => void handleViewDetail(item.id)}
-                        disabled={busyRecordId === item.id}
-                        className="rounded-full border border-plum/15 bg-white px-4 py-2 text-sm font-semibold text-plum transition hover:bg-plum/5 disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        {busyRecordId === item.id && detailTargetId === item.id && detailLoading ? "加载中..." : "查看详情"}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleEdit(item.id)}
-                        disabled={busyRecordId === item.id}
-                        className="rounded-full border border-plum/15 bg-white px-4 py-2 text-sm font-semibold text-plum transition hover:bg-plum/5 disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        {busyRecordId === item.id ? "处理中..." : "编辑档案"}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setDeleteTarget(item)}
-                        disabled={busyRecordId === item.id}
-                        className="rounded-full border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        删除档案
-                      </button>
-                    </div>
-                  </div>
+                <article key={item.id} className="rounded-[24px] border border-line/80 bg-white/88 px-5 py-4 shadow-sm">
+                  <div className="flex gap-6">
+                    <div className="min-w-0 basis-2/3">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <h2 className="truncate font-display text-[2rem] font-extrabold tracking-tight text-ink">
+                          {item.name || "未命名档案"}
+                        </h2>
+                        <TagBadge tone={resolveGenderTone(item.gender)}>{formatUnknownDisplay(item.gender)}</TagBadge>
+                        {resolveSpecialCaseLabel(item) ? <TagBadge tone="amber">{resolveSpecialCaseLabel(item)}</TagBadge> : null}
+                      </div>
 
-                  <div className="mt-5 space-y-3 rounded-[24px] border border-[#f0e8f6] bg-[#fbf8ff] p-4">
-                    <SummaryLine label="阳格" value={`${item.firstCaseYangDigitString}/${item.firstCaseYangMissingDigits}`} />
-                    <SummaryLine label="阴格" value={`${item.firstCaseYinDigitString}/${item.firstCaseYinMissingDigits}`} />
+                      <div className="mt-4 grid grid-cols-2 gap-x-10 gap-y-3">
+                        <div className="space-y-3">
+                          <RecordInfoRow label="阳历" value={joinDateAndShichen(item.firstCaseSolarBirthday, item.trueSolarShichen)} />
+                          <RecordInfoRow label="阴历" value={joinDateAndShichen(item.firstCaseLunarBirthday, item.trueSolarShichen)} />
+                        </div>
+                        <div className="space-y-3">
+                          <RecordInfoRow label="阳格" value={`${item.firstCaseYangDigitString}/${item.firstCaseYangMissingDigits}`} />
+                          <RecordInfoRow label="阴格" value={`${item.firstCaseYinDigitString}/${item.firstCaseYinMissingDigits}`} />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="basis-1/3 shrink-0 self-center">
+                      <div className="flex w-full items-center justify-end">
+                        <div className="flex w-full flex-nowrap justify-end gap-2 rounded-[22px] border border-line/80 bg-[#fbf8ff] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
+                          <button
+                            type="button"
+                            onClick={() => void handleViewDetail(item.id)}
+                            disabled={busyRecordId === item.id}
+                            className="whitespace-nowrap rounded-full border border-plum/15 bg-white px-4 py-2 text-sm font-semibold text-plum shadow-sm transition hover:bg-plum/5 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {busyRecordId === item.id && detailTargetId === item.id && detailLoading ? "加载中..." : "查看详情"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleEdit(item.id)}
+                            disabled={busyRecordId === item.id}
+                            className="whitespace-nowrap rounded-full border border-plum/15 bg-white px-4 py-2 text-sm font-semibold text-plum shadow-sm transition hover:bg-plum/5 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {busyRecordId === item.id ? "处理中..." : "编辑档案"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDeleteTarget(item)}
+                            disabled={busyRecordId === item.id}
+                            className="whitespace-nowrap rounded-full border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 shadow-sm transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            删除档案
+                          </button>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </article>
               ))
@@ -386,11 +398,56 @@ export function RecordsPage() {
   );
 }
 
-function SummaryLine({ label, value }: { label: string; value: string }) {
+function RecordInfoRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between gap-4 rounded-2xl border border-white/80 bg-white/80 px-4 py-3">
-      <span className="text-sm font-semibold text-plum">{label}</span>
-      <span className="font-display text-lg font-bold tracking-tight text-ink">{value}</span>
+    <div className="flex items-baseline gap-2 text-[15px] leading-7 text-ink/62">
+      <span className="shrink-0 font-medium text-ink/68">{label}:</span>
+      <span className="min-w-0 truncate text-[1.05rem] font-medium text-ink">{value}</span>
     </div>
+  );
+}
+
+function joinDateAndShichen(dateText: string, shichen: string) {
+  const shichenLabel = formatShichenLabel(shichen);
+  return `${dateText} ${shichenLabel}`;
+}
+
+function resolveSpecialCaseLabel(item: ChartRecordListItem) {
+  const tokens: string[] = [];
+
+  if (item.ziHourType === "前子时" || item.ziHourType === "后子时") {
+    tokens.push(item.ziHourType);
+  }
+  if (item.hasLunarLeapCase) {
+    tokens.push("闰月");
+  }
+
+  return tokens.length > 0 ? tokens.join(" · ") : "";
+}
+
+function resolveGenderTone(gender: string) {
+  if (gender === "女") {
+    return "pink" as const;
+  }
+  if (gender === "男") {
+    return "blue" as const;
+  }
+  return "slate" as const;
+}
+
+function TagBadge({ children, tone }: { children: string; tone: "blue" | "pink" | "amber" | "slate" }) {
+  const className =
+    tone === "blue"
+      ? "bg-[#3278eb] text-white"
+      : tone === "pink"
+        ? "bg-[#ffedf5] text-[#e14b8f]"
+        : tone === "amber"
+          ? "bg-[#fff3df] text-[#e69019]"
+          : "bg-[#eef2f7] text-[#64748b]";
+
+  return (
+    <span className={`inline-flex shrink-0 items-center rounded-full px-4 py-1.5 text-lg font-semibold leading-none ${className}`}>
+      {children}
+    </span>
   );
 }

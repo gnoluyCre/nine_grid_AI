@@ -147,7 +147,6 @@ export function buildResultViewModelFromFixture(
   const activeCase: ChartCaseViewModel = {
     index: safeCaseIndex,
     label: activeFixtureCase.label,
-    dateRelation: activeFixtureCase.dateRelation,
     mode,
     metrics: activeFixtureCase.metrics,
     tabs: [
@@ -170,7 +169,6 @@ export function buildResultViewModelFromFixture(
     items: fixture.cases.map((item, index) => ({
       index,
       label: item.label,
-      dateRelation: item.dateRelation,
       solarBirthday: item.metrics.solarBirthday,
     })),
   };
@@ -208,7 +206,6 @@ export function buildApiResponseFromFixture(
       return {
         index: item.index,
         label: item.label,
-        dateRelation: item.dateRelation,
         metrics: caseViewModel.activeCase.metrics,
         charts: {
           yang: tabs.find((tab) => tab.key === "yang")!.grid,
@@ -230,7 +227,6 @@ export function buildResultViewModelFromApiResponse(
   const activeCase: ChartCaseViewModel = {
     index: safeCaseIndex,
     label: activeApiCase.label,
-    dateRelation: activeApiCase.dateRelation,
     mode,
     metrics: activeApiCase.metrics,
     tabs: [
@@ -253,7 +249,6 @@ export function buildResultViewModelFromApiResponse(
     items: payload.cases.map((item) => ({
       index: item.index,
       label: item.label,
-      dateRelation: item.dateRelation,
       solarBirthday: item.metrics.solarBirthday,
     })),
   };

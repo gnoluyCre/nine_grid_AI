@@ -1,17 +1,10 @@
-// input: 表单值、地区选项、默认规则与提交回调。
+// input: 表单值、地区选项、可空字段规则与提交回调。
 // output: 首页出生信息录入表单与提交可用性控制。
 // pos: 前端录入区的核心表单组件。
 // 一旦我被更新务必更新我的开头注释以及所属文件夹的 md
 import { useEffect, useMemo, useState } from "react";
 import type { BirthFormValue, PickerDraftState, RegionTreeNode } from "../types/models";
-import { QUICK_CASES } from "../fixtures/sampleCases";
-import {
-  DEFAULT_BIRTH_TIME,
-  formatDateParts,
-  formatTimeParts,
-  parseDateParts,
-  parseTimeParts,
-} from "../lib/formState";
+import { formatDateParts, formatTimeParts, parseDateParts, parseTimeParts } from "../lib/formState";
 import { findRegionSelectionById } from "../lib/regionTree";
 import { PickerSheet } from "./PickerSheet";
 import { RegionPicker } from "./RegionPicker";
@@ -21,7 +14,6 @@ interface BirthFormProps {
   value: BirthFormValue;
   regionTree: RegionTreeNode[];
   onChange: (nextValue: BirthFormValue) => void;
-  onPreset: (caseId: string) => void;
   onSubmit: () => void;
   loading?: boolean;
   editing?: boolean;
@@ -33,12 +25,12 @@ const MONTH_OPTIONS = Array.from({ length: 12 }, (_, index) => index + 1);
 const HOUR_OPTIONS = Array.from({ length: 24 }, (_, index) => index);
 const MINUTE_OPTIONS = Array.from({ length: 60 }, (_, index) => index);
 
-export function BirthForm({ value, regionTree, onChange, onPreset, onSubmit, loading = false, editing = false }: BirthFormProps) {
+export function BirthForm({ value, regionTree, onChange, onSubmit, loading = false, editing = false }: BirthFormProps) {
   const [activePicker, setActivePicker] = useState<"date" | "time" | null>(null);
   const selectedRegion = useMemo(() => findRegionSelectionById(regionTree, value.regionId), [regionTree, value.regionId]);
   const dateDraft = useDateDraft(value.birthDate);
   const timeDraft = useTimeDraft(value.birthTime);
-  const canSubmit = value.birthDate.trim().length > 0 && value.gender.trim().length > 0 && !loading;
+  const canSubmit = value.birthDate.trim().length > 0 && !loading;
 
   function updateField<Key extends keyof BirthFormValue>(key: Key, fieldValue: BirthFormValue[Key]) {
     onChange({
@@ -71,22 +63,6 @@ export function BirthForm({ value, regionTree, onChange, onPreset, onSubmit, loa
           </p>
         </div>
 
-        <div className="mb-8">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-plum/60">快捷填充案例</p>
-          <div className="flex flex-wrap gap-3">
-            {QUICK_CASES.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => onPreset(item.id)}
-                className="rounded-full border border-plum/15 bg-white px-4 py-2 text-sm font-medium text-plum transition hover:border-plum/35 hover:bg-plum/5"
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
         <div className="grid gap-5 sm:grid-cols-2">
           <label className="block sm:col-span-2">
             <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-plum/60">档案名</span>
@@ -105,14 +81,14 @@ export function BirthForm({ value, regionTree, onChange, onPreset, onSubmit, loa
                 <button
                   key={option}
                   type="button"
-                  onClick={() => updateField("gender", option)}
+                  onClick={() => updateField("gender", value.gender === option ? "" : option)}
                   className={`segmented-card ${value.gender === option ? "segmented-card-active" : ""}`}
                 >
                   {option}
                 </button>
               ))}
             </div>
-            <p className="mt-2 text-xs text-ink/48">性别为必填项，请主动选择。</p>
+            <p className="mt-2 text-xs text-ink/48">性别为选填项，再次点击当前选项可清空。</p>
           </div>
 
           <PickerTrigger
@@ -125,10 +101,22 @@ export function BirthForm({ value, regionTree, onChange, onPreset, onSubmit, loa
 
           <PickerTrigger
             label="出生时间"
-            value={value.birthTime || DEFAULT_BIRTH_TIME}
-            meta="默认 12:00"
+            value={value.birthTime || "请选择出生时辰"}
+            meta={value.birthTime ? "已选择" : "选填"}
+            empty={!value.birthTime}
             onClick={() => setActivePicker("time")}
           />
+          {value.birthTime ? (
+            <div className="-mt-2 sm:col-start-2">
+              <button
+                type="button"
+                onClick={() => updateField("birthTime", "")}
+                className="text-xs font-medium text-plum/58 transition hover:text-plum"
+              >
+                清空时辰
+              </button>
+            </div>
+          ) : null}
 
           <div className="sm:col-span-2">
             <RegionPicker regionTree={regionTree} value={value.regionId} onChange={(regionId) => updateField("regionId", regionId)} />
@@ -136,7 +124,9 @@ export function BirthForm({ value, regionTree, onChange, onPreset, onSubmit, loa
               <p className="mt-2 text-xs text-ink/48">
                 当前用于计算的地区：{selectedRegion.provinceName} / {selectedRegion.cityName} / {selectedRegion.districtName}
               </p>
-            ) : null}
+            ) : (
+              <p className="mt-2 text-xs text-ink/48">未填写地区时不会计算真太阳时，相关结果统一显示为未知。</p>
+            )}
           </div>
         </div>
 
@@ -189,7 +179,7 @@ export function BirthForm({ value, regionTree, onChange, onPreset, onSubmit, loa
       <PickerSheet
         open={activePicker === "time"}
         title="选择出生时间"
-        description="时间默认为 12:00，你可以按小时和分钟逐项调整。"
+        description="时间为选填项，你可以按小时和分钟逐项调整；未填写时相关时辰与半补展示为未知。"
         onClose={() => setActivePicker(null)}
         onConfirm={() => {
           updateField("birthTime", formatTimeParts(selectedHour, selectedMinute));

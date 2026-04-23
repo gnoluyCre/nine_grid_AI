@@ -1,11 +1,9 @@
-// input: sessionStorage 与表单/编辑上下文类型。
-// output: 草稿、编辑态和新建意图的读写函数。
+// input: sessionStorage 与表单/编辑上下文类型，以及可空录入字段规则。
+// output: 草稿、编辑态和新建意图的读写函数，并保持时辰/地区空态。
 // pos: 前端表单持久化工具层。
 // 一旦我被更新务必更新我的开头注释以及所属文件夹的 md
 import type { BirthFormValue, EditingRecordContext } from "../types/models";
 
-export const DEFAULT_REGION_ID = "陕西省|渭南市|蒲城县";
-export const DEFAULT_BIRTH_TIME = "12:00";
 export const FORM_DRAFT_STORAGE_KEY = "nine-grid.birth-form-draft";
 export const EDITING_RECORD_STORAGE_KEY = "nine-grid.editing-record";
 export const NEW_RECORD_INTENT_STORAGE_KEY = "nine-grid.new-record-intent";
@@ -14,8 +12,8 @@ export const DEFAULT_FORM_VALUE: BirthFormValue = {
   name: "",
   gender: "",
   birthDate: "",
-  birthTime: DEFAULT_BIRTH_TIME,
-  regionId: DEFAULT_REGION_ID,
+  birthTime: "",
+  regionId: "",
 };
 
 const TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
@@ -43,8 +41,8 @@ export function normalizeBirthFormValue(value: Partial<BirthFormValue> | null | 
     name: value?.name?.trim() ?? "",
     gender: value?.gender?.trim() ?? "",
     birthDate: isValidBirthDate(value?.birthDate ?? "") ? value!.birthDate!.trim() : "",
-    birthTime: isValidBirthTime(value?.birthTime ?? "") ? value!.birthTime!.trim() : DEFAULT_BIRTH_TIME,
-    regionId: value?.regionId?.trim() || DEFAULT_REGION_ID,
+    birthTime: isValidBirthTime(value?.birthTime ?? "") ? value!.birthTime!.trim() : "",
+    regionId: value?.regionId?.trim() ?? "",
   };
 }
 

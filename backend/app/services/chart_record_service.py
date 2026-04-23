@@ -1,5 +1,5 @@
 # input: ChartRecordRepository、BirthChartService 与排盘请求模型。
-# output: 档案记录的业务编排与响应映射。
+# output: 档案记录的业务编排，以及列表/详情响应映射与结果页兼容数据，并统一空值为“未知”展示。
 # pos: 后端档案服务层。
 # 一旦我被更新务必更新我的开头注释以及所属文件夹的 md
 from __future__ import annotations
@@ -19,6 +19,8 @@ from ..schemas.responses import (
     ChartRecordListResponse,
 )
 from .chart_service import BirthChartService, ChartRequestError
+
+UNKNOWN_DISPLAY = "未知"
 
 
 class ChartRecordService:
@@ -103,7 +105,7 @@ class ChartRecordService:
             "po_raw": chart_dict["poRaw"],
             "main_soul": chart_dict["mainSoul"],
             "sub_soul": chart_dict["subSoul"],
-            "half_supplement": chart_dict["halfSupplement"],
+            "half_supplement": "" if chart_dict["halfSupplement"] == UNKNOWN_DISPLAY else chart_dict["halfSupplement"],
             "grid_cells_json": json.dumps(chart_dict["cells"], ensure_ascii=False),
             "grid_snapshot_json": json.dumps(chart_dict, ensure_ascii=False),
         }
@@ -116,23 +118,24 @@ class ChartRecordService:
         computed_chart = self._chart_service.build_computed_birth_chart(request)
         timestamp = datetime.now(UTC).replace(microsecond=0).isoformat(sep=" ")
         response = computed_chart.response
+        raw_cases = computed_chart.raw_result["cases"]
         region = computed_chart.region
 
         record_data = {
-            "name": request.name,
-            "gender": request.gender,
+            "name": response.summary.name,
+            "gender": "" if request.gender == UNKNOWN_DISPLAY else request.gender,
             "birth_date": request.birthDate,
             "birth_time": request.birthTime,
-            "input_datetime_text": f"{request.birthDate} {request.birthTime}",
+            "input_datetime_text": " ".join(filter(None, [request.birthDate, request.birthTime])),
             "region_id": request.regionId,
-            "province_name": region.province_name,
-            "city_name": region.city_name,
-            "district_name": region.district_name,
-            "longitude": region.longitude,
+            "province_name": region.province_name if request.regionId else "",
+            "city_name": region.city_name if request.regionId else "",
+            "district_name": region.district_name if request.regionId else "",
+            "longitude": region.longitude if request.regionId else 0,
             "zi_hour_type": self._map_zi_hour_type(response.summary.ziHourType),
             "case_count": len(response.cases),
-            "true_solar_datetime": response.summary.trueSolarDatetimeText,
-            "true_solar_shichen": response.summary.trueSolarShichen,
+            "true_solar_datetime": self._storage_or_empty(response.summary.trueSolarDatetimeText),
+            "true_solar_shichen": self._storage_or_empty(response.summary.trueSolarShichen),
             "has_lunar_leap_case": any(case.metrics.lunarIsLeapMonth for case in response.cases),
             "source_payload_json": json.dumps(request.model_dump(), ensure_ascii=False),
             "created_at": timestamp,
@@ -141,17 +144,17 @@ class ChartRecordService:
         }
 
         case_data_list: list[dict[str, object]] = []
-        for case in response.cases:
+        for case, raw_case in zip(response.cases, raw_cases, strict=True):
             case_data_list.append(
                 {
                     "case_index": case.index,
                     "case_label": case.label,
-                    "date_relation": case.dateRelation,
+                    "date_relation": raw_case["date_relation"],
                     "solar_birthday": case.metrics.solarBirthday,
                     "lunar_birthday": case.metrics.lunarBirthday,
                     "lunar_birthday_display": case.metrics.lunarBirthdayDisplay,
                     "age": case.metrics.age,
-                    "true_solar_shichen": case.metrics.trueSolarShichen,
+                    "true_solar_shichen": self._storage_or_empty(case.metrics.trueSolarShichen),
                     "lunar_is_leap_month": case.metrics.lunarIsLeapMonth,
                     "grids": [
                         self._build_grid_data("yang", case.charts.yang),
@@ -201,8 +204,30 @@ class ChartRecordService:
             )
         return banners
 
+    @staticmethod
+    def _storage_or_empty(value: str) -> str:
+        return "" if value == UNKNOWN_DISPLAY else value
+
+    @staticmethod
+    def _display_or_unknown(value: object) -> str:
+        normalized = str(value or "").strip()
+        return normalized or UNKNOWN_DISPLAY
+
+    @classmethod
+    def _build_region_text_from_row(cls, row: dict[str, object]) -> str:
+        region_text = " ".join(
+            part
+            for part in [
+                str(row.get("province_name") or "").strip(),
+                str(row.get("city_name") or "").strip(),
+                str(row.get("district_name") or "").strip(),
+            ]
+            if part
+        )
+        return region_text or UNKNOWN_DISPLAY
+
     def _map_record_list_item(self, row: dict[str, object]) -> ChartRecordListItem:
-        region_text = " ".join([row["province_name"], row["city_name"], row["district_name"]])
+        region_text = self._build_region_text_from_row(row)
         detail = self._repository.get_record(row["user_id"], row["id"])
         if detail is None or not detail["cases"]:
             raise ChartRequestError(f"排盘记录不存在: {row['id']}")
@@ -211,7 +236,7 @@ class ChartRecordService:
         return ChartRecordListItem(
             id=row["id"],
             name=row["name"],
-            gender=row["gender"],
+            gender=self._display_or_unknown(row["gender"]),
             birthDate=row["birth_date"],
             birthTime=row["birth_time"],
             regionId=row["region_id"],
@@ -219,9 +244,11 @@ class ChartRecordService:
             ziHourType=self._map_zi_hour_type_display(row["zi_hour_type"]),
             caseCount=row["case_count"],
             hasLunarLeapCase=bool(row["has_lunar_leap_case"]),
-            trueSolarDatetimeText=row["true_solar_datetime"],
-            trueSolarShichen=row["true_solar_shichen"],
+            trueSolarDatetimeText=self._display_or_unknown(row["true_solar_datetime"]),
+            trueSolarShichen=self._display_or_unknown(row["true_solar_shichen"]),
             createdAt=row["created_at"],
+            firstCaseSolarBirthday=first_case["solar_birthday"],
+            firstCaseLunarBirthday=first_case["lunar_birthday"],
             firstCaseYangDigitString=grid_map["yang"]["digitString"],
             firstCaseYangMissingDigits=grid_map["yang"]["missingDigits"],
             firstCaseYinDigitString=grid_map["yin"]["digitString"],
@@ -243,13 +270,12 @@ class ChartRecordService:
                 ApiCaseViewModel(
                     index=case_row["case_index"],
                     label=case_row["case_label"],
-                    dateRelation=case_row["date_relation"],
                     metrics={
                         "solarBirthday": case_row["solar_birthday"],
                         "lunarBirthday": case_row["lunar_birthday"],
                         "lunarBirthdayDisplay": case_row["lunar_birthday_display"],
                         "age": case_row["age"],
-                        "trueSolarShichen": case_row["true_solar_shichen"],
+                        "trueSolarShichen": self._display_or_unknown(case_row["true_solar_shichen"]),
                         "lunarIsLeapMonth": bool(case_row["lunar_is_leap_month"]),
                     },
                     charts=charts,
@@ -257,12 +283,12 @@ class ChartRecordService:
             )
 
         zi_hour_type_display = self._map_zi_hour_type_display(row["zi_hour_type"])
-        region_text = " ".join([row["province_name"], row["city_name"], row["district_name"]])
+        region_text = self._build_region_text_from_row(row)
         banners = self._build_banners_from_cases(cases, zi_hour_type_display)
         return ChartRecordDetailResponse(
             id=row["id"],
             name=row["name"],
-            gender=row["gender"],
+            gender=self._display_or_unknown(row["gender"]),
             birthDate=row["birth_date"],
             birthTime=row["birth_time"],
             inputDatetimeText=row["input_datetime_text"],
@@ -272,8 +298,8 @@ class ChartRecordService:
             ziHourType=zi_hour_type_display,
             caseCount=row["case_count"],
             hasLunarLeapCase=bool(row["has_lunar_leap_case"]),
-            trueSolarDatetimeText=row["true_solar_datetime"],
-            trueSolarShichen=row["true_solar_shichen"],
+            trueSolarDatetimeText=self._display_or_unknown(row["true_solar_datetime"]),
+            trueSolarShichen=self._display_or_unknown(row["true_solar_shichen"]),
             createdAt=row["created_at"],
             updatedAt=row["updated_at"],
             banners=banners,

@@ -1,5 +1,5 @@
-// input: 后端接口字段、前端展示结构与共享数据约定。
-// output: 前端全局共享类型定义。
+// input: 后端接口字段、前端展示结构与档案列表/结果页共享数据约定。
+// output: 前端全局共享类型定义与档案列表、结果页展示字段。
 // pos: 前端类型系统中心。
 // 一旦我被更新务必更新我的开头注释以及所属文件夹的 md
 export type ChartMode = "yang" | "yin";
@@ -172,7 +172,6 @@ export interface CaseMetricsViewModel {
 export interface ApiCaseViewModel {
   index: number;
   label: string;
-  dateRelation: string;
   metrics: CaseMetricsViewModel;
   charts: {
     yang: GridBoardViewModel;
@@ -200,6 +199,8 @@ export interface ChartRecordListItem {
   trueSolarDatetimeText: string;
   trueSolarShichen: string;
   createdAt: string;
+  firstCaseSolarBirthday: string;
+  firstCaseLunarBirthday: string;
   firstCaseYangDigitString: string;
   firstCaseYangMissingDigits: string;
   firstCaseYinDigitString: string;
@@ -247,7 +248,6 @@ export interface EditingRecordContext {
 export interface CaseSelectorItem {
   index: number;
   label: string;
-  dateRelation: string;
   solarBirthday: string;
 }
 
@@ -266,7 +266,6 @@ export interface ChartTabViewModel {
 export interface ChartCaseViewModel {
   index: number;
   label: string;
-  dateRelation: string;
   mode: ChartMode;
   tabs: ChartTabViewModel[];
   metrics: CaseMetricsViewModel;
