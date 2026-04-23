@@ -1,15 +1,16 @@
-// input: 鉴权状态、档案 API、路由跳转与确认弹窗组件。
-// output: 档案管理列表、编辑和删除流程。
+// input: 鉴权状态、档案 API、路由跳转与详情/确认弹窗组件。
+// output: 档案管理列表、详情查看、编辑和删除流程。
 // pos: 前端档案管理页面容器。
 // 一旦我被更新务必更新我的开头注释以及所属文件夹的 md
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ConfirmDialog } from "../components/ConfirmDialog";
+import { RecordDetailDialog } from "../components/RecordDetailDialog";
 import { UserAccountPanel } from "../components/UserAccountPanel";
 import { useAuth } from "../context/AuthContext";
 import { deleteChartRecord, fetchChartRecordDetail, fetchChartRecords } from "../lib/api";
 import { saveEditingRecordContext, saveNewRecordIntent } from "../lib/formState";
-import type { ChartRecordListItem } from "../types/models";
+import type { ChartRecordDetailResponse, ChartRecordListItem } from "../types/models";
 
 const PAGE_SIZE = 10;
 
@@ -23,6 +24,10 @@ export function RecordsPage() {
   const [error, setError] = useState("");
   const [busyRecordId, setBusyRecordId] = useState<number | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ChartRecordListItem | null>(null);
+  const [detailTargetId, setDetailTargetId] = useState<number | null>(null);
+  const [detailPayload, setDetailPayload] = useState<ChartRecordDetailResponse | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState("");
 
   function handleCreateNewRecord() {
     saveNewRecordIntent();
@@ -117,6 +122,32 @@ export function RecordsPage() {
       }
       setError(message);
     } finally {
+      setBusyRecordId(null);
+    }
+  }
+
+  async function handleViewDetail(recordId: number) {
+    setBusyRecordId(recordId);
+    setDetailTargetId(recordId);
+    setDetailLoading(true);
+    setDetailError("");
+    setDetailPayload(null);
+    setError("");
+    try {
+      const detail = await fetchChartRecordDetail(recordId);
+      setDetailPayload(detail);
+    } catch (nextError) {
+      const message = nextError instanceof Error ? nextError.message : "档案详情加载失败";
+      if (message === "请先登录") {
+        const nextUser = await refreshUser();
+        if (nextUser) {
+          setDetailError("登录状态已恢复，请重新打开详情。");
+          return;
+        }
+      }
+      setDetailError(message);
+    } finally {
+      setDetailLoading(false);
       setBusyRecordId(null);
     }
   }
@@ -221,6 +252,14 @@ export function RecordsPage() {
                     <div className="flex flex-wrap gap-2">
                       <button
                         type="button"
+                        onClick={() => void handleViewDetail(item.id)}
+                        disabled={busyRecordId === item.id}
+                        className="rounded-full border border-plum/15 bg-white px-4 py-2 text-sm font-semibold text-plum transition hover:bg-plum/5 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {busyRecordId === item.id && detailTargetId === item.id && detailLoading ? "加载中..." : "查看详情"}
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => handleEdit(item.id)}
                         disabled={busyRecordId === item.id}
                         className="rounded-full border border-plum/15 bg-white px-4 py-2 text-sm font-semibold text-plum transition hover:bg-plum/5 disabled:cursor-not-allowed disabled:opacity-60"
@@ -284,6 +323,19 @@ export function RecordsPage() {
         onConfirm={() => {
           if (deleteTarget) {
             void handleDelete(deleteTarget.id);
+          }
+        }}
+      />
+      <RecordDetailDialog
+        open={detailTargetId !== null}
+        payload={detailPayload}
+        loading={detailLoading}
+        error={detailError}
+        onClose={() => {
+          if (!detailLoading) {
+            setDetailTargetId(null);
+            setDetailPayload(null);
+            setDetailError("");
           }
         }}
       />

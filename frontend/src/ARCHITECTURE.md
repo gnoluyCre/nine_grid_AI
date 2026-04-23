@@ -15,4 +15,4 @@
 
 子目录提示：`components` 放通用 UI，`pages` 放页面容器，`lib` 放工具与接口，`context` 放全局状态，`types` 放共享类型。  
 其中 `AuthContext.tsx` 负责登录后的二次校验，`UserAccountPanel.tsx` 负责登录态展示、昵称编辑与安全退出，`RecordsPage.tsx` 和 `InputPage.tsx` 依赖鉴权状态决定是否请求受保护接口。  
-`BirthForm.tsx` 与 `SubmitAction.tsx` 共同控制“开始排盘”按钮在必填项未完成前不可点击。
+`BirthForm.tsx` 与 `SubmitAction.tsx` 共同控制“开始排盘”按钮在必填项未完成前不可点击，`RecordDetailDialog.tsx` 负责档案管理内的只读详情弹层。
