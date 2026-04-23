@@ -1,81 +1,185 @@
 # 九宫格排盘系统
 
-当前仓库是九宫格排盘系统的主版本代码库，包含：
+当前仓库是九宫格排盘系统的主版本代码库，包含独立算法模块、FastAPI 后端、React 前端以及配套文档，适合作为后续功能迭代和联调的主基线。
 
-- `nine_grid/`：核心算法模块
-- `backend/`：FastAPI 后端接口
-- `frontend/`：前端页面与结果展示
-- `docs/`：接口文档、算法说明、联调记录
+## 系统概览
 
-## 当前状态
+项目围绕“出生信息录入 -> 真太阳时修正 -> 九宫格排盘 -> 结果展示/保存/导出”这一条主链路构建，当前已经形成一套可本地运行的完整系统：
 
-当前版本已经完成：
+- `nine_grid/`：独立核心算法包，支持命令行方式单独运行
+- `backend/`：FastAPI 后端，负责排盘接口、账号体系、档案持久化、批量导出
+- `frontend/`：React + Vite 前端，负责录入页、结果页、登录注册和档案管理
+- `docs/`：算法说明与接口对接文档
+- `assets/`：静态资源
 
-- 核心九宫格算法落地
-- 前后端真实接口联调
-- 阳格 / 阴格切换
-- 前后子时双方案
-- 农历闰月处理
-- 主魂 / 副魂 / 魄 / 缺漏 / 半补展示
+## 当前功能
 
-这一版可以作为后续需求迭代的主版本基线。
+### 1. 排盘能力
 
-## 目录说明
+- 支持按出生日期、出生时间、地区、性别进行排盘
+- 按地区经度和均时差修正真太阳时
+- 支持阳格 / 阴格切换展示
+- 支持前子时 / 后子时双方案处理
+- 支持农历闰月双方案处理
+- 展示主魂、副魂、魄、半补、缺漏等结果信息
+- 支持结果页在多方案之间切换查看
+
+### 2. 前端业务能力
+
+- 首页录入出生资料并提交真实后端接口
+- 结果页展示九宫格盘面、指标概览和特殊提示条
+- 支持访客模式直接排盘
+- 登录后排盘结果可自动保存为个人档案
+- 支持从档案回填编辑并覆盖原记录
+- 支持档案详情查看、分页、搜索、删除、Excel 导出
+- 支持首页批量导出指定日期区间的排盘结果并下载文件
+
+### 3. 账号与后端能力
+
+- 邮箱注册
+- 邮箱验证码确认注册
+- 邮箱登录 / 退出登录
+- 忘记密码与验证码重置密码
+- 当前登录用户信息查询与资料更新
+- 基于 Cookie 的会话鉴权
+- SQLite 本地持久化档案数据
+
+### 4. 接口能力
+
+后端当前提供的核心接口包括：
+
+- 地区列表：`GET /api/v1/regions`
+- 单次排盘：`POST /api/v1/charts`
+- 首页批量导出：`POST /api/v1/batch-exports`
+- 批量导出查询与下载：`GET /api/v1/batch-exports/{job_id}`、`GET /api/v1/batch-exports/{job_id}/download`
+- 注册、登录、找回密码、当前用户：`/api/v1/auth/*`
+- 档案增删改查与导出：`/api/v1/chart-records*`
+- 健康检查：`GET /health`
+
+## 技术栈
+
+- 核心算法：Python
+- 后端：FastAPI、Pydantic、Uvicorn、openpyxl
+- 前端：React 18、TypeScript、Vite、React Router、Tailwind CSS
+- 数据存储：SQLite
+
+## 目录结构
 
 ```text
 nine_grid/
-├── backend/
-├── docs/
-├── frontend/
-├── nine_grid/
-├── scripts/
-├── tests/
-├── region.json
+├── assets/                      # 静态资源
+├── backend/                     # FastAPI 后端
+├── docs/                        # 算法与对接文档
+├── frontend/                    # React 前端
+├── nine_grid/                   # 独立算法包与 CLI
+├── tests/                       # 算法与地区数据测试
+├── .env.example                 # 环境变量示例
+├── ARCHITECTURE.md              # 根目录维护说明
+├── LICENSE
 ├── README.md
-└── 算法对接文档.md
+└── region.json                  # 地区树原始数据
 ```
 
 ## 本地运行
 
-后端：
+### 1. 后端
+
+安装依赖：
 
 ```powershell
 python -m pip install -r backend\requirements.txt
+```
+
+启动服务：
+
+```powershell
 python -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-前端：
+启动后可访问：
+
+- Swagger 文档：`http://127.0.0.1:8000/docs`
+- 健康检查：`http://127.0.0.1:8000/health`
+
+说明：
+
+- 默认数据库路径为 `backend/data/nine_grid.sqlite3`
+- 后端启动时会自动初始化数据库表
+- 后端会自动加载项目根目录下的 `.env` 或 `backend/.env`
+
+### 2. 前端
+
+安装依赖：
 
 ```powershell
 cd frontend
 npm install
+```
+
+启动开发环境：
+
+```powershell
 npm run dev
 ```
 
+默认访问地址通常为：`http://127.0.0.1:5173`
+
+## 环境变量
+
+如需启用邮箱注册/找回密码验证码能力，可在项目根目录创建 `.env`，参考 `.env.example`：
+
+```env
+NINE_GRID_SMTP_HOST=smtp.qq.com
+NINE_GRID_SMTP_PORT=465
+NINE_GRID_SMTP_USERNAME=your_mail@qq.com
+NINE_GRID_SMTP_PASSWORD=your_smtp_authorization_code
+NINE_GRID_MAIL_FROM=your_mail@qq.com
+NINE_GRID_SMTP_USE_SSL=true
+```
+
+如果未正确配置 SMTP，涉及验证码发送的功能将无法正常工作。
+
+## 独立算法命令行运行
+
+除了 Web 系统外，核心算法也可以单独通过命令行运行：
+
+```powershell
+python -m nine_grid.cli
+```
+
+该模式适合直接验证地区选择、出生信息输入与单人排盘结果。
+
 ## 测试
 
-算法回归：
+可在仓库根目录执行：
 
 ```powershell
-python tests\test_cases.py
+pytest
 ```
 
-后端接口测试：
+当前仓库包含：
 
-```powershell
-python -m pytest backend\tests\test_api.py -q -c backend\pytest.ini
-```
+- 根目录 `tests/`：核心算法与地区仓库测试
+- `backend/tests/`：后端接口测试
 
-前端构建检查：
+## 文档索引
 
-```powershell
-cd frontend
-npm run build
-```
+- 根目录维护说明：`ARCHITECTURE.md`
+- 核心算法说明：`docs/九宫格核心算法.md`
+- 前后端对接文档：`docs/算法对接文档.md`
+- 其他目录架构说明：
+  - `backend/ARCHITECTURE.md`
+  - `backend/app/ARCHITECTURE.md`
+  - `frontend/ARCHITECTURE.md`
+  - `frontend/src/ARCHITECTURE.md`
+  - `nine_grid/ARCHITECTURE.md`
+  - `tests/ARCHITECTURE.md`
 
-## 文档
+## 当前状态
 
-- 算法说明：`docs/nine-grid-algorithm-guide.md`
-- 后端接口契约：`docs/backend-api-contract.md`
-- 前后端接口对接：`算法对接文档.md`
-- 联调回归记录：`docs/integration-regression-report-2026-04-22.md`
+当前版本已经具备完整的本地闭环能力：
+
+- 核心排盘算法可独立运行
+- 前后端已完成真实接口联调
+- 账号、档案、导出等基础业务链路已落地
+- 可作为后续 AI 解读、权限扩展和部署工作的稳定基线
