@@ -1,3 +1,7 @@
+// input: GridBoardViewModel 与标题文本。
+// output: 完整九宫格面板。
+// pos: 前端结果页的核心图表组件。
+// 一旦我被更新务必更新我的开头注释以及所属文件夹的 md
 import type { GridBoardViewModel } from "../types/models";
 import { GridCell } from "./GridCell";
 

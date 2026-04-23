@@ -1,3 +1,7 @@
+// input: 单个九宫格单元格视图模型。
+// output: 单格视觉渲染结果。
+// pos: 九宫格棋盘的最小显示单元。
+// 一旦我被更新务必更新我的开头注释以及所属文件夹的 md
 import type { GridCellViewModel } from "../types/models";
 
 interface GridCellProps {

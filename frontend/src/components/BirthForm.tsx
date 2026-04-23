@@ -1,3 +1,7 @@
+// input: 表单值、地区选项、默认规则与提交回调。
+// output: 首页出生信息录入表单与提交可用性控制。
+// pos: 前端录入区的核心表单组件。
+// 一旦我被更新务必更新我的开头注释以及所属文件夹的 md
 import { useEffect, useMemo, useState } from "react";
 import type { BirthFormValue, PickerDraftState, RegionTreeNode } from "../types/models";
 import { QUICK_CASES } from "../fixtures/sampleCases";
@@ -34,6 +38,7 @@ export function BirthForm({ value, regionTree, onChange, onPreset, onSubmit, loa
   const selectedRegion = useMemo(() => findRegionSelectionById(regionTree, value.regionId), [regionTree, value.regionId]);
   const dateDraft = useDateDraft(value.birthDate);
   const timeDraft = useTimeDraft(value.birthTime);
+  const canSubmit = value.birthDate.trim().length > 0 && value.gender.trim().length > 0 && !loading;
 
   function updateField<Key extends keyof BirthFormValue>(key: Key, fieldValue: BirthFormValue[Key]) {
     onChange({
@@ -135,7 +140,7 @@ export function BirthForm({ value, regionTree, onChange, onPreset, onSubmit, loa
           </div>
         </div>
 
-        <SubmitAction onSubmit={onSubmit} loading={loading} editing={editing} />
+        <SubmitAction onSubmit={onSubmit} loading={loading} editing={editing} disabled={!canSubmit} />
       </div>
 
       <PickerSheet

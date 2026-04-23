@@ -1,3 +1,7 @@
+# input: calculator、models、region_data 中的公开算法符号。
+# output: nine_grid 算法包对外导出。
+# pos: 独立算法包的出口层。
+# 一旦我被更新务必更新我的开头注释以及所属文件夹的 md
 from .calculator import (
     calculate_age,
     calculate_birth_chart,

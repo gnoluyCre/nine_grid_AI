@@ -1,3 +1,7 @@
+// input: BirthFormValue、GridBoardViewModel 与地区类型。
+// output: 前端演示和回归用的样例数据。
+// pos: 前端本地 fixture 数据源。
+// 一旦我被更新务必更新我的开头注释以及所属文件夹的 md
 import type { BirthFormValue, GridBoardViewModel, RegionOption } from "../types/models";
 
 type FixtureChart = Omit<GridBoardViewModel, "cells">;

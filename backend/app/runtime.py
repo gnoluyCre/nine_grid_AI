@@ -1,3 +1,7 @@
+# input: 当前文件位置与项目目录结构约定。
+# output: 项目根路径等运行时辅助函数。
+# pos: 后端运行时公共工具层。
+# 一旦我被更新务必更新我的开头注释以及所属文件夹的 md
 from __future__ import annotations
 
 import sys

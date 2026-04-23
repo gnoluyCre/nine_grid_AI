@@ -1,3 +1,7 @@
+// input: 后端排盘响应、档案响应与前端展示类型。
+// output: 结果页所需的视图模型转换函数。
+// pos: 前端结果展示映射层。
+// 一旦我被更新务必更新我的开头注释以及所属文件夹的 md
 import type {
   BannerViewModel,
   BirthChartApiResponse,

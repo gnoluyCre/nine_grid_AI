@@ -1,6 +1,12 @@
+// input: 鉴权状态、档案 API、路由跳转与确认弹窗组件。
+// output: 档案管理列表、编辑和删除流程。
+// pos: 前端档案管理页面容器。
+// 一旦我被更新务必更新我的开头注释以及所属文件夹的 md
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ConfirmDialog } from "../components/ConfirmDialog";
+import { UserAccountPanel } from "../components/UserAccountPanel";
+import { useAuth } from "../context/AuthContext";
 import { deleteChartRecord, fetchChartRecordDetail, fetchChartRecords } from "../lib/api";
 import { saveEditingRecordContext, saveNewRecordIntent } from "../lib/formState";
 import type { ChartRecordListItem } from "../types/models";
@@ -9,6 +15,7 @@ const PAGE_SIZE = 10;
 
 export function RecordsPage() {
   const navigate = useNavigate();
+  const { isAuthenticated, authLoading, refreshUser } = useAuth();
   const [page, setPage] = useState(1);
   const [items, setItems] = useState<ChartRecordListItem[]>([]);
   const [total, setTotal] = useState(0);
@@ -27,6 +34,19 @@ export function RecordsPage() {
   }
 
   useEffect(() => {
+    if (authLoading) {
+      setLoading(true);
+      return;
+    }
+
+    if (!isAuthenticated) {
+      setItems([]);
+      setTotal(0);
+      setLoading(false);
+      setError("");
+      return;
+    }
+
     let cancelled = false;
 
     async function loadRecords() {
@@ -47,7 +67,15 @@ export function RecordsPage() {
         if (cancelled) {
           return;
         }
-        setError(nextError instanceof Error ? nextError.message : "档案列表加载失败");
+        const message = nextError instanceof Error ? nextError.message : "档案列表加载失败";
+        if (message === "请先登录") {
+          const nextUser = await refreshUser();
+          if (nextUser) {
+            setError("登录状态已恢复，正在重新同步档案列表。");
+            return;
+          }
+        }
+        setError(message);
       } finally {
         if (!cancelled) {
           setLoading(false);
@@ -60,7 +88,7 @@ export function RecordsPage() {
     return () => {
       cancelled = true;
     };
-  }, [page]);
+  }, [authLoading, isAuthenticated, page]);
 
   async function handleEdit(recordId: number) {
     setBusyRecordId(recordId);
@@ -79,7 +107,15 @@ export function RecordsPage() {
       });
       navigate("/");
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : "档案读取失败");
+      const message = nextError instanceof Error ? nextError.message : "档案读取失败";
+      if (message === "请先登录") {
+        const nextUser = await refreshUser();
+        if (nextUser) {
+          setError("登录状态已恢复，请重新打开该档案。");
+          return;
+        }
+      }
+      setError(message);
     } finally {
       setBusyRecordId(null);
     }
@@ -100,7 +136,15 @@ export function RecordsPage() {
         setTotal(response.total);
       }
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : "档案删除失败");
+      const message = nextError instanceof Error ? nextError.message : "档案删除失败";
+      if (message === "请先登录") {
+        const nextUser = await refreshUser();
+        if (nextUser) {
+          setError("登录状态已恢复，请重新执行删除操作。");
+          return;
+        }
+      }
+      setError(message);
     } finally {
       setBusyRecordId(null);
     }
@@ -118,13 +162,16 @@ export function RecordsPage() {
               <h1 className="mt-2 font-display text-3xl font-extrabold tracking-tight text-ink">档案管理</h1>
               <p className="mt-3 text-sm leading-6 text-ink/62">查看已保存档案，支持回填编辑和删除。</p>
             </div>
-            <button
-              type="button"
-              onClick={() => navigate("/")}
-              className="rounded-full border border-plum/15 bg-white/82 px-4 py-2 text-sm font-semibold text-plum transition hover:bg-plum/5"
-            >
-              返回首页
-            </button>
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={() => navigate("/")}
+                className="rounded-full border border-plum/15 bg-white/82 px-4 py-2 text-sm font-semibold text-plum transition hover:bg-plum/5"
+              >
+                返回首页
+              </button>
+              <UserAccountPanel />
+            </div>
           </div>
           <div className="mt-4 flex justify-end">
             <button

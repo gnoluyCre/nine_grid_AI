@@ -1,6 +1,12 @@
+// input: 表单组件、地区接口、鉴权状态与排盘接口。
+// output: 首页录入、提交排盘与登录态感知流程。
+// pos: 前端首页页面容器。
+// 一旦我被更新务必更新我的开头注释以及所属文件夹的 md
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { BirthForm } from "../components/BirthForm";
+import { UserAccountPanel } from "../components/UserAccountPanel";
+import { useAuth } from "../context/AuthContext";
 import { CASE_FIXTURES, REGION_OPTIONS } from "../fixtures/sampleCases";
 import {
   clearBirthFormDraft,
@@ -14,9 +20,9 @@ import {
   saveBirthFormDraft,
 } from "../lib/formState";
 import { buildRegionTree, resolveRegionSelection } from "../lib/regionTree";
-import { createChartRecord, fetchRegions, updateChartRecord } from "../lib/api";
+import { createBirthChart, createChartRecord, fetchRegions, updateChartRecord } from "../lib/api";
 import { resolveFixtureId } from "../lib/viewModel";
-import type { BirthFormValue, ChartRecordDetailResponse, EditingRecordContext, RegionOption } from "../types/models";
+import type { BirthChartApiResponse, BirthFormValue, ChartRecordDetailResponse, EditingRecordContext, RegionOption } from "../types/models";
 
 interface InputRouteState {
   returnMode?: "restore-input" | "new-record";
@@ -26,6 +32,7 @@ interface InputRouteState {
 export function InputPage() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { isAuthenticated, refreshUser } = useAuth();
   const [formValue, setFormValue] = useState<BirthFormValue>(() => loadBirthFormDraft() ?? DEFAULT_FORM_VALUE);
   const [editingContext, setEditingContext] = useState<EditingRecordContext | null>(() => loadEditingRecordContext());
   const [regions, setRegions] = useState<RegionOption[]>(REGION_OPTIONS);
@@ -52,6 +59,18 @@ export function InputPage() {
   }, [editingContext]);
 
   useEffect(() => {
+    if (isAuthenticated || !editingContext) {
+      return;
+    }
+    clearEditingRecordContext();
+    setEditingContext(null);
+  }, [editingContext, isAuthenticated]);
+
+  useEffect(() => {
+    setSubmitError("");
+  }, [isAuthenticated]);
+
+  useEffect(() => {
     const routeState = (location.state as InputRouteState | undefined) ?? {};
     const shouldStartNew = routeState.returnMode === "new-record" || consumeNewRecordIntent();
     if (shouldStartNew) {
@@ -59,6 +78,7 @@ export function InputPage() {
       setEditingContext(null);
       clearBirthFormDraft();
       setFormValue(DEFAULT_FORM_VALUE);
+      setSubmitError("");
       return;
     }
 
@@ -115,6 +135,7 @@ export function InputPage() {
     if (!fixture) {
       return;
     }
+    setSubmitError("");
     setFormValue(normalizeBirthFormValue(fixture.formPreset));
   }
 
@@ -132,25 +153,40 @@ export function InputPage() {
     setSubmitError("");
 
     try {
-      let resultDetail: ChartRecordDetailResponse;
-      if (editingContext) {
-        resultDetail = await updateChartRecord(editingContext.recordId, normalizedFormValue);
+      let payload: ChartRecordDetailResponse | BirthChartApiResponse;
+      let recordId: number | undefined;
+      let recordAction: "created" | "updated" | undefined;
+      if (editingContext && isAuthenticated) {
+        payload = await updateChartRecord(editingContext.recordId, normalizedFormValue);
         clearEditingRecordContext();
         setEditingContext(null);
+        recordId = payload.id;
+        recordAction = "updated";
+      } else if (isAuthenticated) {
+        payload = await createChartRecord(normalizedFormValue);
+        recordId = payload.id;
+        recordAction = "created";
       } else {
-        resultDetail = await createChartRecord(normalizedFormValue);
+        payload = await createBirthChart(normalizedFormValue);
       }
       setFormValue(normalizedFormValue);
       navigate("/result", {
         state: {
           formValue: normalizedFormValue,
-          payload: resultDetail,
-          recordId: resultDetail.id,
-          recordAction: editingContext ? "updated" : "created",
+          payload,
+          recordId,
+          recordAction,
         },
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : "排盘请求失败";
+      if (message === "请先登录") {
+        const nextUser = await refreshUser();
+        if (nextUser) {
+          setSubmitError("登录状态已恢复，请重新点击开始排盘。");
+          return;
+        }
+      }
       setSubmitError(message);
     } finally {
       setSubmitting(false);
@@ -166,13 +202,16 @@ export function InputPage() {
           <div className="relative">
             <div className="mb-6 flex items-center justify-between gap-4">
               <p className="text-xs font-semibold uppercase tracking-[0.28em] text-plum/60">Nine Grid System</p>
-              <button
-                type="button"
-                onClick={() => navigate("/records")}
-                className="rounded-full border border-plum/15 bg-white/82 px-4 py-2 text-sm font-semibold text-plum transition hover:bg-plum/5"
-              >
-                档案管理
-              </button>
+              <div className="flex flex-wrap items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => navigate(isAuthenticated ? "/records" : "/login", { state: { redirectTo: "/records" } })}
+                  className="rounded-full border border-plum/15 bg-white/82 px-4 py-2 text-sm font-semibold text-plum transition hover:bg-plum/5"
+                >
+                  档案管理
+                </button>
+                <UserAccountPanel />
+              </div>
             </div>
           </div>
           <div className="relative grid gap-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(18rem,0.85fr)] lg:items-end">

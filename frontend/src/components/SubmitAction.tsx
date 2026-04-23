@@ -1,10 +1,15 @@
+// input: 按钮文案、禁用状态与点击回调。
+// output: 统一风格的提交操作区与提交按钮状态。
+// pos: 表单提交动作组件。
+// 一旦我被更新务必更新我的开头注释以及所属文件夹的 md
 interface SubmitActionProps {
   onSubmit: () => void;
   loading?: boolean;
   editing?: boolean;
+  disabled?: boolean;
 }
 
-export function SubmitAction({ onSubmit, loading = false, editing = false }: SubmitActionProps) {
+export function SubmitAction({ onSubmit, loading = false, editing = false, disabled = false }: SubmitActionProps) {
   return (
     <div className="mt-8 flex flex-col gap-3 border-t border-[#eee5f5] pt-6 sm:flex-row sm:items-center sm:justify-between">
       <p className="max-w-lg text-sm text-ink/55">
@@ -13,8 +18,8 @@ export function SubmitAction({ onSubmit, loading = false, editing = false }: Sub
       <button
         type="button"
         onClick={onSubmit}
-        disabled={loading}
-        className="rounded-full bg-gradient-to-r from-plum to-iris px-6 py-3 font-display text-sm font-bold text-white shadow-soft transition hover:translate-y-[-1px]"
+        disabled={disabled}
+        className="rounded-full bg-gradient-to-r from-plum to-iris px-6 py-3 font-display text-sm font-bold text-white shadow-soft transition hover:translate-y-[-1px] disabled:cursor-not-allowed disabled:opacity-55 disabled:hover:translate-y-0"
       >
         {loading ? (editing ? "更新中..." : "排盘中...") : editing ? "更新档案并排盘" : "开始排盘"}
       </button>

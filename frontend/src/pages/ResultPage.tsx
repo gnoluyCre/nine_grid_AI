@@ -1,3 +1,7 @@
+// input: 路由状态、结果视图映射与结果页组件。
+// output: 九宫格排盘结果页面。
+// pos: 前端结果展示页面容器。
+// 一旦我被更新务必更新我的开头注释以及所属文件夹的 md
 import { useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { CaseSelector } from "../components/CaseSelector";
@@ -6,13 +10,15 @@ import { MetricsPanel } from "../components/MetricsPanel";
 import { NineGridBoard } from "../components/NineGridBoard";
 import { ResultBannerList } from "../components/ResultBannerList";
 import { ResultSummaryCard } from "../components/ResultSummaryCard";
+import { UserAccountPanel } from "../components/UserAccountPanel";
+import { useAuth } from "../context/AuthContext";
 import { saveNewRecordIntent } from "../lib/formState";
-import { buildResultViewModelFromRecordDetail } from "../lib/viewModel";
-import type { BirthFormValue, ChartMode, ChartRecordDetailResponse } from "../types/models";
+import { buildResultViewModelFromApiResponse, buildResultViewModelFromRecordDetail } from "../lib/viewModel";
+import type { BirthChartApiResponse, BirthFormValue, ChartMode, ChartRecordDetailResponse } from "../types/models";
 
 interface ResultRouteState {
   formValue?: BirthFormValue;
-  payload?: ChartRecordDetailResponse;
+  payload?: BirthChartApiResponse | ChartRecordDetailResponse;
   recordId?: number;
   recordAction?: "created" | "updated";
 }
@@ -20,6 +26,7 @@ interface ResultRouteState {
 export function ResultPage() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
   const routeState = (location.state as ResultRouteState | undefined) ?? {};
   const [activeCaseIndex, setActiveCaseIndex] = useState(0);
   const [mode, setMode] = useState<ChartMode>("yang");
@@ -27,7 +34,12 @@ export function ResultPage() {
   const payload = routeState.payload;
   const formValue = routeState.formValue;
   const viewModel = useMemo(
-    () => (payload ? buildResultViewModelFromRecordDetail(payload, activeCaseIndex, mode) : null),
+    () =>
+      payload
+        ? "id" in payload
+          ? buildResultViewModelFromRecordDetail(payload, activeCaseIndex, mode)
+          : buildResultViewModelFromApiResponse(payload, activeCaseIndex, mode)
+        : null,
     [activeCaseIndex, mode, payload],
   );
 
@@ -83,9 +95,10 @@ export function ResultPage() {
             <h1 className="mt-2 font-display text-2xl font-extrabold tracking-tight text-ink">九宫格排盘结果</h1>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <UserAccountPanel />
             <button
               type="button"
-              onClick={() => navigate("/records")}
+              onClick={() => navigate(isAuthenticated ? "/records" : "/login", { state: { redirectTo: "/records" } })}
               className="rounded-full border border-plum/15 bg-white/80 px-4 py-2 text-sm font-semibold text-plum transition hover:bg-plum/5"
             >
               档案管理
@@ -110,6 +123,11 @@ export function ResultPage() {
           {routeState.recordAction === "updated" ? (
             <div className="rounded-[24px] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">
               当前结果已同步覆盖原档案。
+            </div>
+          ) : null}
+          {!isAuthenticated ? (
+            <div className="rounded-[24px] border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
+              当前为访客排盘模式。登录后重新排盘，系统会自动按你的账号保存档案。
             </div>
           ) : null}
           <ResultBannerList banners={viewModel.banners} />

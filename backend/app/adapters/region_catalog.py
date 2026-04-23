@@ -1,3 +1,7 @@
+# input: region.json 原始地区树与运行时根路径。
+# output: 可查询的扁平地区目录对象。
+# pos: 算法与 API 共享的地区数据适配器。
+# 一旦我被更新务必更新我的开头注释以及所属文件夹的 md
 from __future__ import annotations
 
 from dataclasses import dataclass

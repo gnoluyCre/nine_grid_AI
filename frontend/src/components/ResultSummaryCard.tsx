@@ -1,3 +1,7 @@
+// input: 排盘摘要视图模型。
+// output: 结果页顶部摘要卡片。
+// pos: 结果总览展示组件。
+// 一旦我被更新务必更新我的开头注释以及所属文件夹的 md
 import type { ResultSummaryViewModel } from "../types/models";
 
 interface ResultSummaryCardProps {

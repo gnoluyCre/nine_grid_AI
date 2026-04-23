@@ -1,3 +1,7 @@
+# input: region.json 原始地区树与文件系统路径。
+# output: 算法包可直接消费的地区数据接口。
+# pos: 独立算法包的数据读取层。
+# 一旦我被更新务必更新我的开头注释以及所属文件夹的 md
 from __future__ import annotations
 
 import json

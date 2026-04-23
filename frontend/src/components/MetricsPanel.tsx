@@ -1,3 +1,7 @@
+// input: 案例指标、模式与当前九宫格数据。
+// output: 结果页右侧指标面板。
+// pos: 结果详情展示组件。
+// 一旦我被更新务必更新我的开头注释以及所属文件夹的 md
 import type { CaseMetricsViewModel, ChartMode, GridBoardViewModel } from "../types/models";
 import type { ReactNode } from "react";
 

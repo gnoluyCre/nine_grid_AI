@@ -1,3 +1,7 @@
+// input: CaseSelectorViewModel 与切换回调。
+// output: 排盘结果页的案例切换器。
+// pos: 结果页的案例导航组件。
+// 一旦我被更新务必更新我的开头注释以及所属文件夹的 md
 import type { CaseSelectorViewModel } from "../types/models";
 
 interface CaseSelectorProps {

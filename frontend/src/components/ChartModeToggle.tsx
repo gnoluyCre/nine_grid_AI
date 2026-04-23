@@ -1,3 +1,7 @@
+// input: 当前阴阳格模式与切换回调。
+// output: 阳格/阴格切换按钮。
+// pos: 结果页图表模式切换组件。
+// 一旦我被更新务必更新我的开头注释以及所属文件夹的 md
 import type { ChartMode } from "../types/models";
 
 interface ChartModeToggleProps {

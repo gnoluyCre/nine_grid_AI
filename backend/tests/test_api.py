@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import sys
+from itertools import count
 
 from fastapi.testclient import TestClient
 import sqlite3
@@ -12,10 +13,84 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from backend.app.main import create_app  # noqa: E402
 
+
+class FakeMailService:
+    def __init__(self) -> None:
+        self.messages: list[dict[str, str]] = []
+
+    def send_verification_code(self, recipient: str, code: str, purpose: str) -> None:
+        self.messages.append(
+            {
+                "recipient": recipient,
+                "code": code,
+                "purpose": purpose,
+            }
+        )
+
+    def latest_code(self, recipient: str, purpose: str) -> str:
+        for item in reversed(self.messages):
+            if item["recipient"] == recipient and item["purpose"] == purpose:
+                return item["code"]
+        raise AssertionError(f"missing verification code for {recipient} / {purpose}")
+
+
 TEST_DB_PATH = PROJECT_ROOT / "backend" / "tests" / ".test-api.sqlite3"
 if TEST_DB_PATH.exists():
     TEST_DB_PATH.unlink()
-client = TestClient(create_app(db_path=TEST_DB_PATH))
+fake_mail_service = FakeMailService()
+app = create_app(db_path=TEST_DB_PATH, mail_service=fake_mail_service)
+client = TestClient(app)
+AUTH_COUNTER = count(1)
+
+
+def create_authenticated_client(
+    *,
+    email_prefix: str = "user",
+    nickname: str = "测试用户",
+    password: str = "secret123",
+) -> tuple[TestClient, dict]:
+    test_client = TestClient(app)
+    index = next(AUTH_COUNTER)
+    email = f"{email_prefix}{index}@example.com"
+    send_code_response = test_client.post(
+        "/api/v1/auth/register/send-code",
+        json={
+            "email": email,
+            "password": password,
+            "confirmPassword": password,
+            "nickname": f"{nickname}{index}",
+        },
+    )
+    assert send_code_response.status_code == 200
+    response = test_client.post(
+        "/api/v1/auth/register/confirm",
+        json={
+            "email": email,
+            "password": password,
+            "confirmPassword": password,
+            "nickname": f"{nickname}{index}",
+            "verificationCode": fake_mail_service.latest_code(email, "register"),
+        },
+    )
+    assert response.status_code == 200
+    return test_client, response.json()
+
+
+def build_birth_payload(
+    *,
+    name: str = "林知微",
+    gender: str = "男",
+    birth_date: str = "1999-10-11",
+    birth_time: str = "06:00",
+    region_id: str = "新疆维吾尔自治区|乌鲁木齐市|头屯河区",
+) -> dict[str, str]:
+    return {
+        "name": name,
+        "gender": gender,
+        "birthDate": birth_date,
+        "birthTime": birth_time,
+        "regionId": region_id,
+    }
 
 
 def test_list_regions_returns_flattened_options() -> None:
@@ -342,17 +417,178 @@ def test_create_chart_rejects_missing_required_fields() -> None:
     assert payload["code"] == "validation_error"
 
 
-def test_create_chart_record_persists_full_result() -> None:
-    response = client.post(
-        "/api/v1/chart-records",
+def test_register_login_logout_and_me_flow() -> None:
+    register_client = TestClient(app)
+    email = f"alpha{next(AUTH_COUNTER)}@example.com"
+    send_code_response = register_client.post(
+        "/api/v1/auth/register/send-code",
         json={
-            "name": "林知微",
-            "gender": "男",
-            "birthDate": "1999-10-11",
-            "birthTime": "06:00",
-            "regionId": "新疆维吾尔自治区|乌鲁木齐市|头屯河区",
+            "email": email,
+            "password": "secret123",
+            "confirmPassword": "secret123",
+            "nickname": "阿尔法",
         },
     )
+    assert send_code_response.status_code == 200
+
+    register_response = register_client.post(
+        "/api/v1/auth/register/confirm",
+        json={
+            "email": email,
+            "password": "secret123",
+            "confirmPassword": "secret123",
+            "nickname": "阿尔法",
+            "verificationCode": fake_mail_service.latest_code(email, "register"),
+        },
+    )
+
+    assert register_response.status_code == 200
+    register_payload = register_response.json()
+    assert register_payload["email"] == email
+    assert len(register_payload["userCode"]) == 6
+    assert register_payload["avatarKey"].startswith("img")
+
+    me_response = register_client.get("/api/v1/auth/me")
+    assert me_response.status_code == 200
+    assert me_response.json()["email"] == register_payload["email"]
+
+    logout_response = register_client.post("/api/v1/auth/logout")
+    assert logout_response.status_code == 204
+
+    me_after_logout = register_client.get("/api/v1/auth/me")
+    assert me_after_logout.status_code == 401
+    assert me_after_logout.json()["message"] == "请先登录"
+
+    login_response = register_client.post(
+        "/api/v1/auth/login",
+        json={
+            "email": register_payload["email"],
+            "password": "secret123",
+        },
+    )
+    assert login_response.status_code == 200
+    assert login_response.json()["nickname"] == "阿尔法"
+
+
+def test_register_rejects_duplicate_email() -> None:
+    email = f"repeat{next(AUTH_COUNTER)}@example.com"
+    first_send = client.post(
+        "/api/v1/auth/register/send-code",
+        json={
+            "email": email,
+            "password": "secret123",
+            "confirmPassword": "secret123",
+            "nickname": "第一次",
+        },
+    )
+    assert first_send.status_code == 200
+    first_confirm = client.post(
+        "/api/v1/auth/register/confirm",
+        json={
+            "email": email,
+            "password": "secret123",
+            "confirmPassword": "secret123",
+            "nickname": "第一次",
+            "verificationCode": fake_mail_service.latest_code(email, "register"),
+        },
+    )
+    assert first_confirm.status_code == 200
+
+    second_send = client.post(
+        "/api/v1/auth/register/send-code",
+        json={
+            "email": email,
+            "password": "secret123",
+            "confirmPassword": "secret123",
+            "nickname": "第二次",
+        },
+    )
+    assert second_send.status_code == 400
+    assert second_send.json()["message"] == "该邮箱已注册"
+
+
+def test_register_requires_valid_verification_code() -> None:
+    email = f"verify{next(AUTH_COUNTER)}@example.com"
+    send_code_response = client.post(
+        "/api/v1/auth/register/send-code",
+        json={
+            "email": email,
+            "password": "secret123",
+            "confirmPassword": "secret123",
+            "nickname": "验证码用户",
+        },
+    )
+    assert send_code_response.status_code == 200
+
+    confirm_response = client.post(
+        "/api/v1/auth/register/confirm",
+        json={
+            "email": email,
+            "password": "secret123",
+            "confirmPassword": "secret123",
+            "nickname": "验证码用户",
+            "verificationCode": "000000",
+        },
+    )
+    assert confirm_response.status_code == 400
+    assert confirm_response.json()["message"] == "验证码错误或已失效"
+
+
+def test_password_reset_flow_updates_login_password() -> None:
+    auth_client, user = create_authenticated_client(email_prefix="reset")
+    logout_response = auth_client.post("/api/v1/auth/logout")
+    assert logout_response.status_code == 204
+
+    send_response = auth_client.post(
+        "/api/v1/auth/password/send-code",
+        json={"email": user["email"]},
+    )
+    assert send_response.status_code == 200
+
+    reset_response = auth_client.post(
+        "/api/v1/auth/password/reset",
+        json={
+            "email": user["email"],
+            "verificationCode": fake_mail_service.latest_code(user["email"], "reset_password"),
+            "newPassword": "updated123",
+            "confirmPassword": "updated123",
+        },
+    )
+    assert reset_response.status_code == 200
+
+    old_login_response = auth_client.post(
+        "/api/v1/auth/login",
+        json={
+            "email": user["email"],
+            "password": "secret123",
+        },
+    )
+    assert old_login_response.status_code == 401
+
+    new_login_response = auth_client.post(
+        "/api/v1/auth/login",
+        json={
+            "email": user["email"],
+            "password": "updated123",
+        },
+    )
+    assert new_login_response.status_code == 200
+
+
+def test_chart_record_endpoints_require_login() -> None:
+    guest_client = TestClient(app)
+    create_response = guest_client.post("/api/v1/chart-records", json=build_birth_payload())
+    assert create_response.status_code == 401
+    assert create_response.json()["message"] == "请先登录"
+
+    list_response = guest_client.get("/api/v1/chart-records")
+    assert list_response.status_code == 401
+    assert list_response.json()["message"] == "请先登录"
+
+
+def test_create_chart_record_persists_full_result() -> None:
+    auth_client, _ = create_authenticated_client()
+    response = auth_client.post("/api/v1/chart-records", json=build_birth_payload())
 
     assert response.status_code == 200
     payload = response.json()
@@ -367,7 +603,8 @@ def test_create_chart_record_persists_full_result() -> None:
 
 
 def test_list_chart_records_supports_digit_string_filter() -> None:
-    create_response = client.post(
+    auth_client, _ = create_authenticated_client(email_prefix="filter")
+    create_response = auth_client.post(
         "/api/v1/chart-records",
         json={
             "name": "许昭",
@@ -379,7 +616,7 @@ def test_list_chart_records_supports_digit_string_filter() -> None:
     )
     assert create_response.status_code == 200
 
-    response = client.get(
+    response = auth_client.get(
         "/api/v1/chart-records",
         params={
             "digitString": "0189",
@@ -398,7 +635,8 @@ def test_list_chart_records_supports_digit_string_filter() -> None:
 
 
 def test_get_chart_record_returns_detail() -> None:
-    create_response = client.post(
+    auth_client, _ = create_authenticated_client(email_prefix="detail")
+    create_response = auth_client.post(
         "/api/v1/chart-records",
         json={
             "name": "沈知夏",
@@ -411,7 +649,7 @@ def test_get_chart_record_returns_detail() -> None:
     assert create_response.status_code == 200
     record_id = create_response.json()["id"]
 
-    response = client.get(f"/api/v1/chart-records/{record_id}")
+    response = auth_client.get(f"/api/v1/chart-records/{record_id}")
 
     assert response.status_code == 200
     payload = response.json()
@@ -422,7 +660,8 @@ def test_get_chart_record_returns_detail() -> None:
 
 
 def test_update_chart_record_overwrites_existing_record() -> None:
-    create_response = client.post(
+    auth_client, _ = create_authenticated_client(email_prefix="update")
+    create_response = auth_client.post(
         "/api/v1/chart-records",
         json={
             "name": "原始档案",
@@ -437,7 +676,7 @@ def test_update_chart_record_overwrites_existing_record() -> None:
     record_id = created_payload["id"]
     created_at = created_payload["createdAt"]
 
-    update_response = client.put(
+    update_response = auth_client.put(
         f"/api/v1/chart-records/{record_id}",
         json={
             "name": "更新后的档案",
@@ -459,7 +698,8 @@ def test_update_chart_record_overwrites_existing_record() -> None:
 
 
 def test_delete_chart_record_removes_record() -> None:
-    create_response = client.post(
+    auth_client, _ = create_authenticated_client(email_prefix="delete")
+    create_response = auth_client.post(
         "/api/v1/chart-records",
         json={
             "name": "待删除档案",
@@ -472,10 +712,10 @@ def test_delete_chart_record_removes_record() -> None:
     assert create_response.status_code == 200
     record_id = create_response.json()["id"]
 
-    delete_response = client.delete(f"/api/v1/chart-records/{record_id}")
+    delete_response = auth_client.delete(f"/api/v1/chart-records/{record_id}")
     assert delete_response.status_code == 204
 
-    get_response = client.get(f"/api/v1/chart-records/{record_id}")
+    get_response = auth_client.get(f"/api/v1/chart-records/{record_id}")
     assert get_response.status_code == 400
     assert get_response.json()["message"] == f"排盘记录不存在: {record_id}"
 
@@ -507,27 +747,22 @@ def test_delete_chart_record_removes_record() -> None:
 
 
 def test_delete_chart_record_hides_record_from_list_and_update() -> None:
-    create_response = client.post(
+    auth_client, _ = create_authenticated_client(email_prefix="soft")
+    create_response = auth_client.post(
         "/api/v1/chart-records",
-        json={
-            "name": "软删档案",
-            "gender": "男",
-            "birthDate": "1999-10-11",
-            "birthTime": "06:00",
-            "regionId": "新疆维吾尔自治区|乌鲁木齐市|头屯河区",
-        },
+        json=build_birth_payload(name="软删档案"),
     )
     assert create_response.status_code == 200
     record_id = create_response.json()["id"]
 
-    delete_response = client.delete(f"/api/v1/chart-records/{record_id}")
+    delete_response = auth_client.delete(f"/api/v1/chart-records/{record_id}")
     assert delete_response.status_code == 204
 
-    list_response = client.get("/api/v1/chart-records")
+    list_response = auth_client.get("/api/v1/chart-records")
     assert list_response.status_code == 200
     assert all(item["id"] != record_id for item in list_response.json()["items"])
 
-    update_response = client.put(
+    update_response = auth_client.put(
         f"/api/v1/chart-records/{record_id}",
         json={
             "name": "尝试更新已删除档案",
@@ -540,6 +775,30 @@ def test_delete_chart_record_hides_record_from_list_and_update() -> None:
     assert update_response.status_code == 400
     assert update_response.json()["message"] == f"排盘记录不存在: {record_id}"
 
-    second_delete_response = client.delete(f"/api/v1/chart-records/{record_id}")
+    second_delete_response = auth_client.delete(f"/api/v1/chart-records/{record_id}")
     assert second_delete_response.status_code == 400
     assert second_delete_response.json()["message"] == f"排盘记录不存在: {record_id}"
+
+
+def test_chart_records_are_isolated_per_user() -> None:
+    user_a_client, _ = create_authenticated_client(email_prefix="owner", nickname="甲")
+    user_b_client, _ = create_authenticated_client(email_prefix="viewer", nickname="乙")
+
+    create_response = user_a_client.post(
+        "/api/v1/chart-records",
+        json=build_birth_payload(name="甲的档案"),
+    )
+    assert create_response.status_code == 200
+    record_id = create_response.json()["id"]
+
+    user_a_list = user_a_client.get("/api/v1/chart-records")
+    assert user_a_list.status_code == 200
+    assert any(item["id"] == record_id for item in user_a_list.json()["items"])
+
+    user_b_list = user_b_client.get("/api/v1/chart-records")
+    assert user_b_list.status_code == 200
+    assert all(item["id"] != record_id for item in user_b_list.json()["items"])
+
+    user_b_detail = user_b_client.get(f"/api/v1/chart-records/{record_id}")
+    assert user_b_detail.status_code == 400
+    assert user_b_detail.json()["message"] == f"排盘记录不存在: {record_id}"

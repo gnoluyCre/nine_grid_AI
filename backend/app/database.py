@@ -1,3 +1,7 @@
+# input: SQLite 路径、现有表结构状态与重建规则。
+# output: 数据库连接与表初始化能力。
+# pos: 后端持久化基础设施底座。
+# 一旦我被更新务必更新我的开头注释以及所属文件夹的 md
 from __future__ import annotations
 
 import sqlite3
@@ -21,10 +25,49 @@ class Database:
 
     def initialize(self) -> None:
         with self.connect() as connection:
+            if self._needs_full_rebuild(connection):
+                self._rebuild_application_schema(connection)
             connection.executescript(
                 """
+                CREATE TABLE IF NOT EXISTS user_account (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    email TEXT NOT NULL UNIQUE,
+                    password_hash TEXT NOT NULL,
+                    nickname TEXT NOT NULL,
+                    user_code TEXT NOT NULL UNIQUE,
+                    avatar_key TEXT NOT NULL,
+                    is_deleted INTEGER NOT NULL DEFAULT 0,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS user_session (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    session_token_hash TEXT NOT NULL UNIQUE,
+                    expires_at TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    last_seen_at TEXT NOT NULL,
+                    user_agent TEXT NULL,
+                    ip_address TEXT NULL,
+                    FOREIGN KEY(user_id) REFERENCES user_account(id) ON DELETE CASCADE
+                );
+
+                CREATE TABLE IF NOT EXISTS email_verification_code (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    email TEXT NOT NULL,
+                    code_hash TEXT NOT NULL,
+                    purpose TEXT NOT NULL,
+                    expires_at TEXT NOT NULL,
+                    consumed_at TEXT NULL,
+                    created_at TEXT NOT NULL,
+                    send_count INTEGER NOT NULL DEFAULT 1,
+                    ip_address TEXT NULL
+                );
+
                 CREATE TABLE IF NOT EXISTS chart_record (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
                     name TEXT NULL,
                     gender TEXT NOT NULL,
                     birth_date TEXT NOT NULL,
@@ -44,7 +87,8 @@ class Database:
                     is_deleted INTEGER NOT NULL DEFAULT 0,
                     deleted_at TEXT NULL,
                     created_at TEXT NOT NULL,
-                    updated_at TEXT NOT NULL
+                    updated_at TEXT NOT NULL,
+                    FOREIGN KEY(user_id) REFERENCES user_account(id) ON DELETE CASCADE
                 );
 
                 CREATE TABLE IF NOT EXISTS chart_case (
@@ -84,6 +128,8 @@ class Database:
 
                 CREATE INDEX IF NOT EXISTS idx_chart_record_birth_date
                     ON chart_record(birth_date);
+                CREATE INDEX IF NOT EXISTS idx_chart_record_user_id
+                    ON chart_record(user_id);
                 CREATE INDEX IF NOT EXISTS idx_chart_record_name_birth_date
                     ON chart_record(name, birth_date);
                 CREATE INDEX IF NOT EXISTS idx_chart_record_region_id
@@ -96,10 +142,60 @@ class Database:
                     ON chart_grid(digit_string);
                 CREATE INDEX IF NOT EXISTS idx_chart_grid_chart_type_digit_string
                     ON chart_grid(chart_type, digit_string);
+                CREATE INDEX IF NOT EXISTS idx_user_session_user_id
+                    ON user_session(user_id);
+                CREATE INDEX IF NOT EXISTS idx_user_session_expires_at
+                    ON user_session(expires_at);
+                CREATE INDEX IF NOT EXISTS idx_email_verification_lookup
+                    ON email_verification_code(email, purpose, created_at);
+                CREATE INDEX IF NOT EXISTS idx_email_verification_expires_at
+                    ON email_verification_code(expires_at);
                 """
             )
             self._ensure_chart_record_soft_delete_columns(connection)
             connection.commit()
+
+    @staticmethod
+    def _needs_full_rebuild(connection: sqlite3.Connection) -> bool:
+        user_table_exists = connection.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'user_account'"
+        ).fetchone()
+        if user_table_exists is not None:
+            user_columns = {
+                row["name"]
+                for row in connection.execute("PRAGMA table_info(user_account)").fetchall()
+            }
+            if "email" not in user_columns:
+                return True
+
+        table_exists = connection.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'chart_record'"
+        ).fetchone()
+        if table_exists is None:
+            return False
+        columns = {
+            row["name"]
+            for row in connection.execute("PRAGMA table_info(chart_record)").fetchall()
+        }
+        return "user_id" not in columns
+
+    @staticmethod
+    def _rebuild_application_schema(connection: sqlite3.Connection) -> None:
+        connection.execute("DELETE FROM chart_grid")
+        connection.execute("DELETE FROM chart_case")
+        connection.execute("DELETE FROM chart_record")
+        connection.execute("DELETE FROM user_session")
+        connection.execute("DELETE FROM user_account")
+        connection.execute("DROP TABLE IF EXISTS email_verification_code")
+        connection.executescript(
+            """
+            DROP TABLE IF EXISTS chart_grid;
+            DROP TABLE IF EXISTS chart_case;
+            DROP TABLE IF EXISTS chart_record;
+            DROP TABLE IF EXISTS user_session;
+            DROP TABLE IF EXISTS user_account;
+            """
+        )
 
     @staticmethod
     def _ensure_chart_record_soft_delete_columns(connection: sqlite3.Connection) -> None:

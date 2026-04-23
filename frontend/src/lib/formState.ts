@@ -1,3 +1,7 @@
+// input: sessionStorage 与表单/编辑上下文类型。
+// output: 草稿、编辑态和新建意图的读写函数。
+// pos: 前端表单持久化工具层。
+// 一旦我被更新务必更新我的开头注释以及所属文件夹的 md
 import type { BirthFormValue, EditingRecordContext } from "../types/models";
 
 export const DEFAULT_REGION_ID = "陕西省|渭南市|蒲城县";

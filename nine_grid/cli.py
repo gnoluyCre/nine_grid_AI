@@ -1,3 +1,7 @@
+# input: 命令行参数、算法包公开能力与地区数据。
+# output: 本地命令行排盘结果。
+# pos: 独立算法包的 CLI 入口。
+# 一旦我被更新务必更新我的开头注释以及所属文件夹的 md
 from __future__ import annotations
 
 from .calculator import calculate_birth_chart

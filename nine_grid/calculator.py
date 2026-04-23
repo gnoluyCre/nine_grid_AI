@@ -1,3 +1,7 @@
+# input: 出生信息、地区经度、核心模型与地区数据。
+# output: 九宫格计算结果与中间派生值。
+# pos: 独立算法包的计算核心。
+# 一旦我被更新务必更新我的开头注释以及所属文件夹的 md
 from __future__ import annotations
 
 from collections import Counter

@@ -1,3 +1,7 @@
+// input: 地区树、当前选择值与确认回调。
+// output: 三级地区联动选择器。
+// pos: 出生地区录入专用选择组件。
+// 一旦我被更新务必更新我的开头注释以及所属文件夹的 md
 import { useEffect, useMemo, useState } from "react";
 import { PickerSheet } from "./PickerSheet";
 import { findRegionSelectionById } from "../lib/regionTree";

@@ -1,3 +1,7 @@
+# input: ChartRecordRepository、BirthChartService 与排盘请求模型。
+# output: 档案记录的业务编排与响应映射。
+# pos: 后端档案服务层。
+# 一旦我被更新务必更新我的开头注释以及所属文件夹的 md
 from __future__ import annotations
 
 import json
@@ -26,31 +30,32 @@ class ChartRecordService:
         self._repository = repository
         self._chart_service = chart_service
 
-    def create_record(self, request: BirthChartRequest) -> ChartRecordDetailResponse:
+    def create_record(self, user_id: int, request: BirthChartRequest) -> ChartRecordDetailResponse:
         record_data, case_data_list = self._build_persistence_payload(request)
-        record_id = self._repository.create_record(record_data, case_data_list)
-        record = self._repository.get_record(record_id)
+        record_id = self._repository.create_record(user_id, record_data, case_data_list)
+        record = self._repository.get_record(user_id, record_id)
         if record is None:
             raise ChartRequestError("排盘记录保存成功后无法读取")
         return self._map_record_detail(record)
 
-    def update_record(self, record_id: int, request: BirthChartRequest) -> ChartRecordDetailResponse:
+    def update_record(self, user_id: int, record_id: int, request: BirthChartRequest) -> ChartRecordDetailResponse:
         record_data, case_data_list = self._build_persistence_payload(request, preserve_created_at=True)
-        updated = self._repository.update_record(record_id, record_data, case_data_list)
+        updated = self._repository.update_record(user_id, record_id, record_data, case_data_list)
         if not updated:
             raise ChartRequestError(f"排盘记录不存在: {record_id}")
-        record = self._repository.get_record(record_id)
+        record = self._repository.get_record(user_id, record_id)
         if record is None:
             raise ChartRequestError(f"排盘记录不存在: {record_id}")
         return self._map_record_detail(record)
 
-    def delete_record(self, record_id: int) -> None:
-        deleted = self._repository.delete_record(record_id)
+    def delete_record(self, user_id: int, record_id: int) -> None:
+        deleted = self._repository.delete_record(user_id, record_id)
         if not deleted:
             raise ChartRequestError(f"排盘记录不存在: {record_id}")
 
     def list_records(
         self,
+        user_id: int,
         page: int,
         page_size: int,
         *,
@@ -71,7 +76,7 @@ class ChartRecordService:
             digit_string=digit_string,
             chart_type=chart_type,
         )
-        total, rows = self._repository.list_records(filters, page, page_size)
+        total, rows = self._repository.list_records(user_id, filters, page, page_size)
         return ChartRecordListResponse(
             items=[self._map_record_list_item(row) for row in rows],
             total=total,
@@ -79,8 +84,8 @@ class ChartRecordService:
             pageSize=page_size,
         )
 
-    def get_record(self, record_id: int) -> ChartRecordDetailResponse:
-        record = self._repository.get_record(record_id)
+    def get_record(self, user_id: int, record_id: int) -> ChartRecordDetailResponse:
+        record = self._repository.get_record(user_id, record_id)
         if record is None:
             raise ChartRequestError(f"排盘记录不存在: {record_id}")
         return self._map_record_detail(record)
@@ -198,7 +203,7 @@ class ChartRecordService:
 
     def _map_record_list_item(self, row: dict[str, object]) -> ChartRecordListItem:
         region_text = " ".join([row["province_name"], row["city_name"], row["district_name"]])
-        detail = self._repository.get_record(row["id"])
+        detail = self._repository.get_record(row["user_id"], row["id"])
         if detail is None or not detail["cases"]:
             raise ChartRequestError(f"排盘记录不存在: {row['id']}")
         first_case = detail["cases"][0]

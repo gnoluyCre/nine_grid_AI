@@ -1,3 +1,7 @@
+// input: 扁平地区列表与地区树类型定义。
+// output: 地区树构建与选择辅助函数。
+// pos: 前端地区数据转换工具层。
+// 一旦我被更新务必更新我的开头注释以及所属文件夹的 md
 import type { RegionOption, RegionSelectionValue, RegionTreeCity, RegionTreeDistrict, RegionTreeNode } from "../types/models";
 
 export function buildRegionTree(regions: RegionOption[]): RegionTreeNode[] {

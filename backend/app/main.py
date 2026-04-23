@@ -1,3 +1,7 @@
+# input: 环境变量、数据库、服务对象与 FastAPI 中间件配置。
+# output: 已装配完成的 FastAPI 应用实例。
+# pos: 后端运行时总入口。
+# 一旦我被更新务必更新我的开头注释以及所属文件夹的 md
 from __future__ import annotations
 
 import os
@@ -7,14 +11,35 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from .api import router
 from .database import Database
-from .repositories import ChartRecordRepository
+from .repositories import AuthRepository, ChartRecordRepository
 from .runtime import ensure_project_root
 from .schemas import ErrorResponse
-from .services import BirthChartService, ChartRecordService
+from .services import AuthError, AuthService, BirthChartService, ChartRecordService, MailService, SmtpMailService
 from .services.chart_service import ChartRequestError
+
+
+def load_env_files() -> None:
+    project_root = ensure_project_root()
+    env_candidates = [
+        project_root / ".env",
+        project_root / "backend" / ".env",
+    ]
+    for env_path in env_candidates:
+        if not env_path.exists():
+            continue
+        for raw_line in env_path.read_text(encoding="utf-8").splitlines():
+            line = raw_line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            key = key.strip()
+            if not key or key in os.environ:
+                continue
+            os.environ[key] = value.strip().strip("\"'")
 
 
 def resolve_database_path() -> Path:
@@ -25,7 +50,8 @@ def resolve_database_path() -> Path:
     return project_root / "backend" / "data" / "nine_grid.sqlite3"
 
 
-def create_app(db_path: str | Path | None = None) -> FastAPI:
+def create_app(db_path: str | Path | None = None, mail_service: MailService | None = None) -> FastAPI:
+    load_env_files()
     app = FastAPI(
         title="Nine Grid Backend API",
         version="0.1.0",
@@ -45,11 +71,15 @@ def create_app(db_path: str | Path | None = None) -> FastAPI:
     database = Database(db_path or resolve_database_path())
     database.initialize()
     chart_service = BirthChartService()
+    auth_repository = AuthRepository(database)
+    auth_service = AuthService(auth_repository, mail_service or SmtpMailService.from_env())
     chart_record_repository = ChartRecordRepository(database)
     chart_record_service = ChartRecordService(chart_record_repository, chart_service)
     app.state.database = database
+    app.state.auth_service = auth_service
     app.state.chart_service = chart_service
     app.state.chart_record_service = chart_record_service
+    app.mount("/assets", StaticFiles(directory=ensure_project_root() / "assets"), name="assets")
     app.include_router(router)
 
     @app.get("/health")
@@ -60,6 +90,11 @@ def create_app(db_path: str | Path | None = None) -> FastAPI:
     async def handle_request_error(_: Request, exc: ChartRequestError) -> JSONResponse:
         payload = ErrorResponse(code="bad_request", message=str(exc))
         return JSONResponse(status_code=400, content=payload.model_dump())
+
+    @app.exception_handler(AuthError)
+    async def handle_auth_error(_: Request, exc: AuthError) -> JSONResponse:
+        payload = ErrorResponse(code="auth_error", message=str(exc))
+        return JSONResponse(status_code=exc.status_code, content=payload.model_dump())
 
     @app.exception_handler(RequestValidationError)
     async def handle_validation_error(_: Request, exc: RequestValidationError) -> JSONResponse:

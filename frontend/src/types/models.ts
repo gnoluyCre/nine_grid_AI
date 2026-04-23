@@ -1,3 +1,7 @@
+// input: 后端接口字段、前端展示结构与共享数据约定。
+// output: 前端全局共享类型定义。
+// pos: 前端类型系统中心。
+// 一旦我被更新务必更新我的开头注释以及所属文件夹的 md
 export type ChartMode = "yang" | "yin";
 export type BannerType = "info" | "warning";
 export type BannerCode = "zi-hour" | "lunar-leap";
@@ -54,6 +58,51 @@ export interface BirthFormValue {
   birthDate: string;
   birthTime: string;
   regionId: string;
+}
+
+export interface CurrentUser {
+  id: number;
+  email: string;
+  nickname: string;
+  userCode: string;
+  avatarKey: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface RegisterSendCodeRequest {
+  nickname: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+}
+
+export interface RegisterConfirmRequest extends RegisterSendCodeRequest {
+  verificationCode: string;
+}
+
+export interface PasswordResetSendCodeRequest {
+  email: string;
+}
+
+export interface PasswordResetConfirmRequest {
+  email: string;
+  verificationCode: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
+export interface MessageResponse {
+  message: string;
+}
+
+export interface UpdateProfileRequest {
+  nickname: string;
 }
 
 export interface ResultSummaryViewModel {

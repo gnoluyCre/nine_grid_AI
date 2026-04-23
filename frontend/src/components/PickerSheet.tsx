@@ -1,3 +1,7 @@
+// input: 打开状态、标题、按钮回调与子内容。
+// output: 移动端风格的底部选择抽屉。
+// pos: 前端统一选择器容器组件。
+// 一旦我被更新务必更新我的开头注释以及所属文件夹的 md
 import { useEffect } from "react";
 
 interface PickerSheetProps {

@@ -1,3 +1,7 @@
+# input: 服务层产出的排盘结果、档案结果与用户信息字段。
+# output: API 对外响应模型。
+# pos: API 输出模型定义层。
+# 一旦我被更新务必更新我的开头注释以及所属文件夹的 md
 from __future__ import annotations
 
 from typing import Literal
@@ -156,3 +160,17 @@ class ChartRecordDetailResponse(BaseModel):
     updatedAt: str
     banners: list[BannerViewModel]
     cases: list[ApiCaseViewModel]
+
+
+class CurrentUserResponse(BaseModel):
+    id: int
+    email: str
+    nickname: str
+    userCode: str
+    avatarKey: str
+    createdAt: str
+    updatedAt: str
+
+
+class MessageResponse(BaseModel):
+    message: str

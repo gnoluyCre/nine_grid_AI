@@ -1,3 +1,7 @@
+# input: 核心算法包、地区目录与排盘请求模型。
+# output: 前端可直接展示的排盘结果视图模型。
+# pos: 后端排盘计算服务层。
+# 一旦我被更新务必更新我的开头注释以及所属文件夹的 md
 from __future__ import annotations
 
 from collections import Counter

@@ -1,3 +1,7 @@
+# input: Database 连接、排盘记录主表与明细表结构。
+# output: 档案记录的增删改查仓储方法。
+# pos: 后端排盘档案数据访问层。
+# 一旦我被更新务必更新我的开头注释以及所属文件夹的 md
 from __future__ import annotations
 
 import json
@@ -25,22 +29,24 @@ class ChartRecordRepository:
 
     def create_record(
         self,
+        user_id: int,
         record_data: dict[str, Any],
         case_data_list: list[dict[str, Any]],
     ) -> int:
         with self._database.connect() as connection:
-            return self._save_record(connection, record_data, case_data_list)
+            return self._save_record(connection, user_id, record_data, case_data_list)
 
     def update_record(
         self,
+        user_id: int,
         record_id: int,
         record_data: dict[str, Any],
         case_data_list: list[dict[str, Any]],
     ) -> bool:
         with self._database.connect() as connection:
             existing = connection.execute(
-                "SELECT id, created_at FROM chart_record WHERE id = ? AND is_deleted = 0",
-                (record_id,),
+                "SELECT id, created_at FROM chart_record WHERE id = ? AND user_id = ? AND is_deleted = 0",
+                (record_id, user_id),
             ).fetchone()
             if existing is None:
                 return False
@@ -48,13 +54,14 @@ class ChartRecordRepository:
             connection.execute(
                 """
                 UPDATE chart_record
-                SET name = ?, gender = ?, birth_date = ?, birth_time = ?, input_datetime_text = ?,
+                SET user_id = ?, name = ?, gender = ?, birth_date = ?, birth_time = ?, input_datetime_text = ?,
                     region_id = ?, province_name = ?, city_name = ?, district_name = ?, longitude = ?,
                     zi_hour_type = ?, case_count = ?, true_solar_datetime = ?, true_solar_shichen = ?,
                     has_lunar_leap_case = ?, source_payload_json = ?, is_deleted = 0, deleted_at = NULL, updated_at = ?
                 WHERE id = ?
                 """,
                 (
+                    user_id,
                     record_data["name"],
                     record_data["gender"],
                     record_data["birth_date"],
@@ -80,18 +87,19 @@ class ChartRecordRepository:
             connection.commit()
             return True
 
-    def delete_record(self, record_id: int) -> bool:
+    def delete_record(self, user_id: int, record_id: int) -> bool:
         with self._database.connect() as connection:
             cursor = connection.execute(
                 """
                 UPDATE chart_record
                 SET is_deleted = 1, deleted_at = ?, updated_at = ?
-                WHERE id = ? AND is_deleted = 0
+                WHERE id = ? AND user_id = ? AND is_deleted = 0
                 """,
                 (
                     datetime.now(UTC).replace(microsecond=0).isoformat(sep=" "),
                     datetime.now(UTC).replace(microsecond=0).isoformat(sep=" "),
                     record_id,
+                    user_id,
                 ),
             )
             connection.commit()
@@ -100,19 +108,21 @@ class ChartRecordRepository:
     def _save_record(
         self,
         connection,
+        user_id: int,
         record_data: dict[str, Any],
         case_data_list: list[dict[str, Any]],
     ) -> int:
         cursor = connection.execute(
                 """
                 INSERT INTO chart_record (
-                    name, gender, birth_date, birth_time, input_datetime_text, region_id,
+                    user_id, name, gender, birth_date, birth_time, input_datetime_text, region_id,
                     province_name, city_name, district_name, longitude, zi_hour_type, case_count,
                     true_solar_datetime, true_solar_shichen, has_lunar_leap_case, source_payload_json,
                     is_deleted, deleted_at, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
+                    user_id,
                     record_data["name"],
                     record_data["gender"],
                     record_data["birth_date"],
@@ -190,9 +200,9 @@ class ChartRecordRepository:
                     ),
                 )
 
-    def list_records(self, filters: ChartRecordFilters, page: int, page_size: int) -> tuple[int, list[dict[str, Any]]]:
-        conditions: list[str] = ["chart_record.is_deleted = 0"]
-        parameters: list[Any] = []
+    def list_records(self, user_id: int, filters: ChartRecordFilters, page: int, page_size: int) -> tuple[int, list[dict[str, Any]]]:
+        conditions: list[str] = ["chart_record.user_id = ?", "chart_record.is_deleted = 0"]
+        parameters: list[Any] = [user_id]
 
         if filters.name:
             conditions.append("chart_record.name LIKE ?")
@@ -247,11 +257,11 @@ class ChartRecordRepository:
             ).fetchall()
             return total, [dict(row) for row in rows]
 
-    def get_record(self, record_id: int) -> dict[str, Any] | None:
+    def get_record(self, user_id: int, record_id: int) -> dict[str, Any] | None:
         with self._database.connect() as connection:
             record_row = connection.execute(
-                "SELECT * FROM chart_record WHERE id = ? AND is_deleted = 0",
-                (record_id,),
+                "SELECT * FROM chart_record WHERE id = ? AND user_id = ? AND is_deleted = 0",
+                (record_id, user_id),
             ).fetchone()
             if record_row is None:
                 return None

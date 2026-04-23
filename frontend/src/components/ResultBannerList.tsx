@@ -1,3 +1,7 @@
+// input: 结果页提示横幅列表。
+// output: 横幅消息区域。
+// pos: 结果页的辅助提示组件。
+// 一旦我被更新务必更新我的开头注释以及所属文件夹的 md
 import type { BannerViewModel } from "../types/models";
 
 interface ResultBannerListProps {

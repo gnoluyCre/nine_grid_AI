@@ -1,3 +1,7 @@
+// input: 打开状态、提示文案与确认取消回调。
+// output: 统一主题的确认弹窗。
+// pos: 前端危险操作确认组件。
+// 一旦我被更新务必更新我的开头注释以及所属文件夹的 md
 interface ConfirmDialogProps {
   open: boolean;
   title: string;
