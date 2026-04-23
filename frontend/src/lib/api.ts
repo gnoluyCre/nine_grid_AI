@@ -7,6 +7,7 @@ import type {
   BirthFormValue,
   ChartRecordDetailResponse,
   ChartRecordListResponse,
+  ChartRecordSearchParams,
   CurrentUser,
   LoginRequest,
   MessageResponse,
@@ -95,8 +96,22 @@ export async function updateChartRecord(recordId: number, payload: BirthFormValu
   })) as ChartRecordDetailResponse;
 }
 
-export async function fetchChartRecords(page: number, pageSize: number): Promise<ChartRecordListResponse> {
-  return (await requestJson<ChartRecordListResponse>(`/api/v1/chart-records?page=${page}&pageSize=${pageSize}`)) as ChartRecordListResponse;
+export async function fetchChartRecords(
+  page: number,
+  pageSize: number,
+  search?: ChartRecordSearchParams,
+): Promise<ChartRecordListResponse> {
+  const params = new URLSearchParams({
+    page: String(page),
+    pageSize: String(pageSize),
+  });
+  if (search?.name) {
+    params.set("name", search.name);
+  }
+  if (search?.digitString) {
+    params.set("digitString", search.digitString);
+  }
+  return (await requestJson<ChartRecordListResponse>(`/api/v1/chart-records?${params.toString()}`)) as ChartRecordListResponse;
 }
 
 export async function fetchChartRecordDetail(recordId: number): Promise<ChartRecordDetailResponse> {

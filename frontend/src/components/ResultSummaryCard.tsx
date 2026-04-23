@@ -15,7 +15,7 @@ export function ResultSummaryCard({ summary }: ResultSummaryCardProps) {
         <div>
           <p className="mb-3 font-display text-xs font-bold uppercase tracking-[0.24em] text-plum/65">分析概览</p>
           <h1 className="font-display text-3xl font-extrabold tracking-tight text-ink">
-            {summary.name || "未命名用户"}
+            {summary.name || "未命名档案"}
           </h1>
           <p className="mt-2 text-sm text-ink/60">
             {summary.gender} · {summary.regionText}

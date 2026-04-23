@@ -1,5 +1,5 @@
 // input: 鉴权状态、档案 API、路由跳转与详情/确认弹窗组件。
-// output: 档案管理列表、详情查看、编辑和删除流程。
+// output: 档案管理列表、搜索、详情查看、编辑和删除流程。
 // pos: 前端档案管理页面容器。
 // 一旦我被更新务必更新我的开头注释以及所属文件夹的 md
 import { useEffect, useState } from "react";
@@ -10,7 +10,7 @@ import { UserAccountPanel } from "../components/UserAccountPanel";
 import { useAuth } from "../context/AuthContext";
 import { deleteChartRecord, fetchChartRecordDetail, fetchChartRecords } from "../lib/api";
 import { saveEditingRecordContext, saveNewRecordIntent } from "../lib/formState";
-import type { ChartRecordDetailResponse, ChartRecordListItem } from "../types/models";
+import type { ChartRecordDetailResponse, ChartRecordListItem, ChartRecordSearchParams } from "../types/models";
 
 const PAGE_SIZE = 10;
 
@@ -28,6 +28,8 @@ export function RecordsPage() {
   const [detailPayload, setDetailPayload] = useState<ChartRecordDetailResponse | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [searchParams, setSearchParams] = useState<ChartRecordSearchParams>({});
 
   function handleCreateNewRecord() {
     saveNewRecordIntent();
@@ -36,6 +38,32 @@ export function RecordsPage() {
         returnMode: "new-record",
       },
     });
+  }
+
+  function buildSearchParams(keyword: string): ChartRecordSearchParams {
+    const normalizedKeyword = keyword.trim();
+    if (!normalizedKeyword) {
+      return {};
+    }
+    if (/^\d+$/.test(normalizedKeyword)) {
+      return {
+        digitString: normalizedKeyword,
+      };
+    }
+    return {
+      name: normalizedKeyword,
+    };
+  }
+
+  function reloadRecords(nextPage: number, nextSearchParams: ChartRecordSearchParams) {
+    return fetchChartRecords(nextPage, PAGE_SIZE, nextSearchParams);
+  }
+
+  function handleSearch() {
+    const nextSearchParams = buildSearchParams(searchInput);
+    setError("");
+    setSearchParams(nextSearchParams);
+    setPage(1);
   }
 
   useEffect(() => {
@@ -58,7 +86,7 @@ export function RecordsPage() {
       setLoading(true);
       setError("");
       try {
-        const response = await fetchChartRecords(page, PAGE_SIZE);
+        const response = await reloadRecords(page, searchParams);
         if (cancelled) {
           return;
         }
@@ -93,7 +121,7 @@ export function RecordsPage() {
     return () => {
       cancelled = true;
     };
-  }, [authLoading, isAuthenticated, page]);
+  }, [authLoading, isAuthenticated, page, searchParams]);
 
   async function handleEdit(recordId: number) {
     setBusyRecordId(recordId);
@@ -162,7 +190,7 @@ export function RecordsPage() {
       if (remainingOnPage <= 0 && page > 1) {
         setPage((current) => current - 1);
       } else {
-        const response = await fetchChartRecords(page, PAGE_SIZE);
+        const response = await reloadRecords(page, searchParams);
         setItems(response.items);
         setTotal(response.total);
       }
@@ -204,7 +232,22 @@ export function RecordsPage() {
               <UserAccountPanel />
             </div>
           </div>
-          <div className="mt-4 flex justify-end">
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex min-w-[18rem] flex-1 flex-wrap items-center gap-3">
+              <input
+                className="field-shell min-w-[16rem] flex-1"
+                value={searchInput}
+                onChange={(event) => setSearchInput(event.target.value)}
+                placeholder="输入档案名称或者阴阳格可快速查找档案"
+              />
+              <button
+                type="button"
+                onClick={handleSearch}
+                className="rounded-full border border-plum/15 bg-white/82 px-5 py-2.5 text-sm font-semibold text-plum transition hover:bg-plum/5"
+              >
+                搜索
+              </button>
+            </div>
             <button
               type="button"
               onClick={handleCreateNewRecord}
@@ -223,9 +266,9 @@ export function RecordsPage() {
 
         <section className="card-surface p-4 sm:p-5">
           <div className="mb-4 flex items-center justify-between gap-3">
-            <p className="text-sm font-semibold text-ink/72">共 {total} 条档案</p>
-            <p className="text-xs text-ink/48">每页 10 条，最新添加优先展示</p>
-          </div>
+              <p className="text-sm font-semibold text-ink/72">共 {total} 条档案</p>
+              <p className="text-xs text-ink/48">每页 10 条，最新添加优先展示</p>
+            </div>
 
           <div className="max-h-[68vh] space-y-4 overflow-y-auto pr-1">
             {loading ? (
@@ -234,7 +277,7 @@ export function RecordsPage() {
               </div>
             ) : items.length === 0 ? (
               <div className="rounded-[24px] border border-line/80 bg-white/78 px-4 py-8 text-center text-sm text-ink/55">
-                当前还没有已保存档案。
+                {searchParams.name || searchParams.digitString ? "未找到符合当前搜索条件的档案。" : "当前还没有已保存档案。"}
               </div>
             ) : (
               items.map((item) => (

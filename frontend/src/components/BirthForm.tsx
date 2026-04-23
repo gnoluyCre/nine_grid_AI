@@ -89,12 +89,12 @@ export function BirthForm({ value, regionTree, onChange, onPreset, onSubmit, loa
 
         <div className="grid gap-5 sm:grid-cols-2">
           <label className="block sm:col-span-2">
-            <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-plum/60">姓名</span>
+            <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-plum/60">档案名</span>
             <input
               className="field-shell w-full"
               value={value.name}
               onChange={(event) => updateField("name", event.target.value)}
-              placeholder="请输入姓名"
+              placeholder="请输入档案名"
             />
           </label>
 

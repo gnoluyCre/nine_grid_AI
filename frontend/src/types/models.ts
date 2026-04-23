@@ -213,6 +213,11 @@ export interface ChartRecordListResponse {
   pageSize: number;
 }
 
+export interface ChartRecordSearchParams {
+  name?: string;
+  digitString?: string;
+}
+
 export interface ChartRecordDetailResponse {
   id: number;
   name?: string;
