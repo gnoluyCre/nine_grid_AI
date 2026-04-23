@@ -13,4 +13,5 @@
 | `main.py` | 应用入口 | 创建 FastAPI 应用并装配依赖 |
 | `runtime.py` | 运行时工具 | 提供项目根路径等运行时辅助 |
 
-子目录提示：业务路由看 `api`，数据访问看 `repositories`，业务编排看 `services`，请求响应模型看 `schemas`。
+子目录提示：业务路由看 `api`，数据访问看 `repositories`，业务编排看 `services`，请求响应模型看 `schemas`。  
+其中 `services/chart_service.py` 负责把算法结果转成前端视图，并直接处理农历 tuple 的阴格派生值，避免把农历日期误当成公历日期对象。

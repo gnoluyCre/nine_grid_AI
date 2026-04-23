@@ -1,5 +1,5 @@
 # input: 出生信息、地区经度、核心模型与地区数据。
-# output: 九宫格计算结果与中间派生值。
+# output: 九宫格计算结果、魄数与中间派生值。
 # pos: 独立算法包的计算核心。
 # 一旦我被更新务必更新我的开头注释以及所属文件夹的 md
 from __future__ import annotations
@@ -163,8 +163,15 @@ def date_to_8_digits(year: int, month: int, day: int) -> list[int]:
     return list(map(int, f"{year:04d}{month:02d}{day:02d}"))
 
 
-def calculate_po(target_date: date) -> str:
-    digits = date_to_8_digits(target_date.year, target_date.month, target_date.day)
+def normalize_year_month_day(target_date: date | tuple[int, int, int]) -> tuple[int, int, int]:
+    if isinstance(target_date, date):
+        return target_date.year, target_date.month, target_date.day
+    return target_date
+
+
+def calculate_po(target_date: date | tuple[int, int, int]) -> str:
+    year, month, day = normalize_year_month_day(target_date)
+    digits = date_to_8_digits(year, month, day)
     return "".join(str(number) for number in sorted(digits))
 
 

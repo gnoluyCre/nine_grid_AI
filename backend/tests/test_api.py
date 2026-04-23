@@ -297,6 +297,26 @@ def test_create_chart_for_leap_month_suffix_case() -> None:
     assert payload["cases"][0]["charts"]["yin"]["mainSoul"] == "91"
 
 
+def test_create_chart_handles_lunar_thirty_day_without_server_error() -> None:
+    response = client.post(
+        "/api/v1/charts",
+        json={
+            "name": "农历三十日案例",
+            "gender": "男",
+            "birthDate": "2000-04-04",
+            "birthTime": "12:00",
+            "regionId": "北京市|北京城区|朝阳区",
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["summary"]["inputBirthDate"] == "2000-04-04"
+    assert payload["cases"][0]["metrics"]["lunarBirthdayDisplay"] == "2000年2月30日"
+    assert payload["cases"][0]["charts"]["yin"]["poRaw"] == "00000223"
+    assert payload["cases"][0]["charts"]["yin"]["po"] == "023"
+
+
 def test_create_chart_for_min_supported_date() -> None:
     response = client.post(
         "/api/v1/charts",
@@ -600,6 +620,27 @@ def test_create_chart_record_persists_full_result() -> None:
     assert payload["hasLunarLeapCase"] is False
     assert payload["cases"][0]["charts"]["yang"]["digitString"] == "19314"
     assert payload["cases"][0]["charts"]["yin"]["digitString"] == "9404"
+
+
+def test_create_chart_record_handles_lunar_thirty_day_without_server_error() -> None:
+    auth_client, _ = create_authenticated_client(email_prefix="lunar30")
+    response = auth_client.post(
+        "/api/v1/chart-records",
+        json={
+            "name": "农历三十日档案",
+            "gender": "男",
+            "birthDate": "2000-04-04",
+            "birthTime": "12:00",
+            "regionId": "北京市|北京城区|朝阳区",
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["birthDate"] == "2000-04-04"
+    assert payload["cases"][0]["metrics"]["lunarBirthdayDisplay"] == "2000年2月30日"
+    assert payload["cases"][0]["charts"]["yin"]["poRaw"] == "00000223"
+    assert payload["cases"][0]["charts"]["yin"]["po"] == "023"
 
 
 def test_list_chart_records_supports_digit_string_filter() -> None:

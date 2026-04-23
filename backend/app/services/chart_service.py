@@ -1,5 +1,5 @@
 # input: 核心算法包、地区目录与排盘请求模型。
-# output: 前端可直接展示的排盘结果视图模型。
+# output: 前端可直接展示的排盘结果视图模型与阴阳格派生字段。
 # pos: 后端排盘计算服务层。
 # 一旦我被更新务必更新我的开头注释以及所属文件夹的 md
 from __future__ import annotations
@@ -152,9 +152,7 @@ class BirthChartService:
             lunar_calc["base_digits"], lunar_calc["suffix_digits"]
         )
         lunar_main_soul = calculate_main_soul(lunar_calc["base_digits"], lunar_calc["suffix_digits"])
-        lunar_po = calculate_po(
-            self._tuple_to_datetime_compatible_date(case_result["lunar_date"])
-        )
+        lunar_po = calculate_po(case_result["lunar_date"])
         lunar_profile = self._build_chart_profile(
             chart_type="yin",
             year_month_day=case_result["lunar_date"],
@@ -196,7 +194,7 @@ class BirthChartService:
         main_soul: str | None = None,
         sub_soul: str | None = None,
     ) -> GridBoardViewModel:
-        profile_po_raw = po_raw or calculate_po(self._tuple_to_datetime_compatible_date(year_month_day))
+        profile_po_raw = po_raw or calculate_po(year_month_day)
         profile_po = self._dedupe_digits(profile_po_raw)
         profile_main_soul = main_soul or calculate_main_soul(base_digits, suffix_digits)
         main_soul_source = calculate_main_soul_source(base_digits, suffix_digits)
@@ -289,8 +287,3 @@ class BirthChartService:
         year_text, month_text, day_text = lunar_birthday.split("-")
         month_label = f"闰{int(month_text)}月" if is_leap_month else f"{int(month_text)}月"
         return f"{year_text}年{month_label}{int(day_text)}日"
-
-    @staticmethod
-    def _tuple_to_datetime_compatible_date(value: tuple[int, int, int]) -> datetime:
-        year, month, day = value
-        return datetime(year, month, day)
