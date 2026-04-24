@@ -1,5 +1,5 @@
-// input: fetch、环境变量、请求模型与响应模型。
-// output: 前端调用后端接口的统一方法与资源地址解析。
+// input: fetch、环境变量、请求模型、响应模型与部署路径约定。
+// output: 前端调用后端接口的统一方法与 API/静态资源地址解析。
 // pos: 前端 API 访问层。
 // 一旦我被更新务必更新我的开头注释以及所属文件夹的 md
 import type {
@@ -22,7 +22,25 @@ import type {
 } from "../types/models";
 
 const configuredApiBaseUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim();
-const API_BASE_URL = configuredApiBaseUrl || (import.meta.env.DEV ? "" : "http://127.0.0.1:8000");
+const API_BASE_URL = configuredApiBaseUrl || (import.meta.env.DEV ? "" : "/api");
+
+function resolveAssetBaseUrl(apiBaseUrl: string) {
+  if (!apiBaseUrl) {
+    return "";
+  }
+
+  if (apiBaseUrl.startsWith("http://") || apiBaseUrl.startsWith("https://")) {
+    return new URL(apiBaseUrl).origin;
+  }
+
+  return "";
+}
+
+const ASSET_BASE_URL = resolveAssetBaseUrl(API_BASE_URL);
+
+function buildApiUrl(path: string) {
+  return `${API_BASE_URL}${path}`;
+}
 
 interface ApiErrorResponse {
   code?: string;
@@ -61,15 +79,15 @@ async function requestJson<T>(input: string, init?: RequestInit, options?: { all
 }
 
 export function resolveAvatarUrl(avatarKey: string) {
-  return `${API_BASE_URL}/assets/headImg/${avatarKey}`;
+  return `${ASSET_BASE_URL}/assets/headImg/${avatarKey}`;
 }
 
 export async function fetchRegions(): Promise<RegionOption[]> {
-  return (await requestJson<RegionOption[]>("/api/v1/regions")) as RegionOption[];
+  return (await requestJson<RegionOption[]>("/v1/regions")) as RegionOption[];
 }
 
 export async function createBatchExport(payload: BatchExportRequest): Promise<BatchExportJobResponse> {
-  return (await requestJson<BatchExportJobResponse>("/api/v1/batch-exports", {
+  return (await requestJson<BatchExportJobResponse>("/v1/batch-exports", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -79,11 +97,11 @@ export async function createBatchExport(payload: BatchExportRequest): Promise<Ba
 }
 
 export async function fetchBatchExportStatus(jobId: string): Promise<BatchExportJobResponse> {
-  return (await requestJson<BatchExportJobResponse>(`/api/v1/batch-exports/${jobId}`)) as BatchExportJobResponse;
+  return (await requestJson<BatchExportJobResponse>(`/v1/batch-exports/${jobId}`)) as BatchExportJobResponse;
 }
 
 export async function downloadBatchExportFile(jobId: string) {
-  const response = await fetch(`${API_BASE_URL}/api/v1/batch-exports/${jobId}/download`, {
+  const response = await fetch(buildApiUrl(`/v1/batch-exports/${jobId}/download`), {
     credentials: "include",
   });
 
@@ -106,7 +124,7 @@ export async function downloadBatchExportFile(jobId: string) {
 }
 
 export async function createBirthChart(payload: BirthFormValue): Promise<BirthChartApiResponse> {
-  return (await requestJson<BirthChartApiResponse>("/api/v1/charts", {
+  return (await requestJson<BirthChartApiResponse>("/v1/charts", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -116,7 +134,7 @@ export async function createBirthChart(payload: BirthFormValue): Promise<BirthCh
 }
 
 export async function createChartRecord(payload: BirthFormValue): Promise<ChartRecordDetailResponse> {
-  return (await requestJson<ChartRecordDetailResponse>("/api/v1/chart-records", {
+  return (await requestJson<ChartRecordDetailResponse>("/v1/chart-records", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -126,7 +144,7 @@ export async function createChartRecord(payload: BirthFormValue): Promise<ChartR
 }
 
 export async function updateChartRecord(recordId: number, payload: BirthFormValue): Promise<ChartRecordDetailResponse> {
-  return (await requestJson<ChartRecordDetailResponse>(`/api/v1/chart-records/${recordId}`, {
+  return (await requestJson<ChartRecordDetailResponse>(`/v1/chart-records/${recordId}`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
@@ -150,11 +168,11 @@ export async function fetchChartRecords(
   if (search?.digitString) {
     params.set("digitString", search.digitString);
   }
-  return (await requestJson<ChartRecordListResponse>(`/api/v1/chart-records?${params.toString()}`)) as ChartRecordListResponse;
+  return (await requestJson<ChartRecordListResponse>(`/v1/chart-records?${params.toString()}`)) as ChartRecordListResponse;
 }
 
 export async function fetchChartRecordDetail(recordId: number): Promise<ChartRecordDetailResponse> {
-  return (await requestJson<ChartRecordDetailResponse>(`/api/v1/chart-records/${recordId}`)) as ChartRecordDetailResponse;
+  return (await requestJson<ChartRecordDetailResponse>(`/v1/chart-records/${recordId}`)) as ChartRecordDetailResponse;
 }
 
 export async function exportChartRecords(search?: ChartRecordSearchParams) {
@@ -165,7 +183,7 @@ export async function exportChartRecords(search?: ChartRecordSearchParams) {
   if (search?.digitString) {
     params.set("digitString", search.digitString);
   }
-  const response = await fetch(`${API_BASE_URL}/api/v1/chart-records/export${params.toString() ? `?${params.toString()}` : ""}`, {
+  const response = await fetch(buildApiUrl(`/v1/chart-records/export${params.toString() ? `?${params.toString()}` : ""}`), {
     credentials: "include",
   });
 
@@ -188,13 +206,13 @@ export async function exportChartRecords(search?: ChartRecordSearchParams) {
 }
 
 export async function deleteChartRecord(recordId: number): Promise<void> {
-  await requestJson<null>(`/api/v1/chart-records/${recordId}`, {
+  await requestJson<null>(`/v1/chart-records/${recordId}`, {
     method: "DELETE",
   });
 }
 
 export async function sendRegisterCode(payload: RegisterSendCodeRequest): Promise<MessageResponse> {
-  return (await requestJson<MessageResponse>("/api/v1/auth/register/send-code", {
+  return (await requestJson<MessageResponse>("/v1/auth/register/send-code", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -204,7 +222,7 @@ export async function sendRegisterCode(payload: RegisterSendCodeRequest): Promis
 }
 
 export async function confirmRegister(payload: RegisterConfirmRequest): Promise<CurrentUser> {
-  return (await requestJson<CurrentUser>("/api/v1/auth/register/confirm", {
+  return (await requestJson<CurrentUser>("/v1/auth/register/confirm", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -214,7 +232,7 @@ export async function confirmRegister(payload: RegisterConfirmRequest): Promise<
 }
 
 export async function login(payload: LoginRequest): Promise<CurrentUser> {
-  return (await requestJson<CurrentUser>("/api/v1/auth/login", {
+  return (await requestJson<CurrentUser>("/v1/auth/login", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -224,13 +242,13 @@ export async function login(payload: LoginRequest): Promise<CurrentUser> {
 }
 
 export async function logout(): Promise<void> {
-  await requestJson<null>("/api/v1/auth/logout", {
+  await requestJson<null>("/v1/auth/logout", {
     method: "POST",
   });
 }
 
 export async function sendPasswordResetCode(payload: PasswordResetSendCodeRequest): Promise<MessageResponse> {
-  return (await requestJson<MessageResponse>("/api/v1/auth/password/send-code", {
+  return (await requestJson<MessageResponse>("/v1/auth/password/send-code", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -240,7 +258,7 @@ export async function sendPasswordResetCode(payload: PasswordResetSendCodeReques
 }
 
 export async function resetPassword(payload: PasswordResetConfirmRequest): Promise<MessageResponse> {
-  return (await requestJson<MessageResponse>("/api/v1/auth/password/reset", {
+  return (await requestJson<MessageResponse>("/v1/auth/password/reset", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -250,11 +268,11 @@ export async function resetPassword(payload: PasswordResetConfirmRequest): Promi
 }
 
 export async function fetchCurrentUser(): Promise<CurrentUser | null> {
-  return (await requestJson<CurrentUser>("/api/v1/auth/me", undefined, { allowUnauthorized: true })) as CurrentUser | null;
+  return (await requestJson<CurrentUser>("/v1/auth/me", undefined, { allowUnauthorized: true })) as CurrentUser | null;
 }
 
 export async function updateCurrentUser(payload: UpdateProfileRequest): Promise<CurrentUser> {
-  return (await requestJson<CurrentUser>("/api/v1/auth/me", {
+  return (await requestJson<CurrentUser>("/v1/auth/me", {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",

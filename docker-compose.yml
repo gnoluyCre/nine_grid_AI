@@ -1,0 +1,35 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      NINE_GRID_DB_PATH: /data/nine_grid.sqlite3
+      NINE_GRID_TEMP_DIR: /tmp/nine_grid_exports
+      NINE_GRID_ALLOWED_ORIGINS: http://127.0.0.1:8080,http://localhost:8080
+      NINE_GRID_SMTP_HOST: ${NINE_GRID_SMTP_HOST:-}
+      NINE_GRID_SMTP_PORT: ${NINE_GRID_SMTP_PORT:-}
+      NINE_GRID_SMTP_USERNAME: ${NINE_GRID_SMTP_USERNAME:-}
+      NINE_GRID_SMTP_PASSWORD: ${NINE_GRID_SMTP_PASSWORD:-}
+      NINE_GRID_MAIL_FROM: ${NINE_GRID_MAIL_FROM:-}
+      NINE_GRID_SMTP_USE_SSL: ${NINE_GRID_SMTP_USE_SSL:-}
+    volumes:
+      - backend_data:/data
+      - backend_exports:/tmp/nine_grid_exports
+    expose:
+      - "8000"
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    depends_on:
+      - backend
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+
+volumes:
+  backend_data:
+  backend_exports:

@@ -1,5 +1,5 @@
-# input: 环境变量、数据库、服务对象与 FastAPI 中间件配置。
-# output: 已装配完成的 FastAPI 应用实例。
+# input: 环境变量、数据库路径、临时目录与 FastAPI 中间件配置。
+# output: 已装配完成的 FastAPI 应用实例与运行时资源装配结果。
 # pos: 后端运行时总入口。
 # 一旦我被更新务必更新我的开头注释以及所属文件夹的 md
 from __future__ import annotations
@@ -50,6 +50,25 @@ def resolve_database_path() -> Path:
     return project_root / "backend" / "data" / "nine_grid.sqlite3"
 
 
+def resolve_temp_dir() -> Path | None:
+    configured_path = os.environ.get("NINE_GRID_TEMP_DIR")
+    if configured_path:
+        return Path(configured_path)
+    return None
+
+
+def resolve_allowed_origins() -> list[str]:
+    configured_origins = os.environ.get("NINE_GRID_ALLOWED_ORIGINS")
+    if configured_origins:
+        origins = [origin.strip() for origin in configured_origins.split(",") if origin.strip()]
+        if origins:
+            return origins
+    return [
+        "http://127.0.0.1:5173",
+        "http://localhost:5173",
+    ]
+
+
 def create_app(db_path: str | Path | None = None, mail_service: MailService | None = None) -> FastAPI:
     load_env_files()
     app = FastAPI(
@@ -60,10 +79,7 @@ def create_app(db_path: str | Path | None = None, mail_service: MailService | No
     )
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[
-            "http://127.0.0.1:5173",
-            "http://localhost:5173",
-        ],
+        allow_origins=resolve_allowed_origins(),
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -71,7 +87,7 @@ def create_app(db_path: str | Path | None = None, mail_service: MailService | No
     database = Database(db_path or resolve_database_path())
     database.initialize()
     chart_service = BirthChartService()
-    batch_export_service = BatchExportService(chart_service)
+    batch_export_service = BatchExportService(chart_service, temp_dir=resolve_temp_dir())
     auth_repository = AuthRepository(database)
     auth_service = AuthService(auth_repository, mail_service or SmtpMailService.from_env())
     chart_record_repository = ChartRecordRepository(database)

@@ -104,6 +104,9 @@ python -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8000 --reload
 说明：
 
 - 默认数据库路径为 `backend/data/nine_grid.sqlite3`
+- 可通过 `NINE_GRID_DB_PATH` 覆盖数据库路径
+- 可通过 `NINE_GRID_ALLOWED_ORIGINS` 覆盖允许跨域来源
+- 可通过 `NINE_GRID_TEMP_DIR` 覆盖批量导出临时目录
 - 后端启动时会自动初始化数据库表
 - 后端会自动加载项目根目录下的 `.env` 或 `backend/.env`
 
@@ -124,6 +127,74 @@ npm run dev
 
 默认访问地址通常为：`http://127.0.0.1:5173`
 
+### 3. 一键启动开发环境
+
+如果你在 Windows 上本地开发，希望保留热更新但不想手动开两个终端，可执行：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\dev.ps1
+```
+
+脚本会分别打开前端和后端窗口：
+
+- 后端：`http://127.0.0.1:8000`
+- 前端：`http://127.0.0.1:5173`
+
+可选参数：
+
+- 仅启动后端：`.\scripts\dev.ps1 -BackendOnly`
+- 仅启动前端：`.\scripts\dev.ps1 -FrontendOnly`
+
+### 4. 使用 Docker Compose 稳定运行
+
+如果你的目标是避免误关终端，并通过一个地址稳定访问整套系统，可执行：
+
+```powershell
+docker compose up -d --build
+```
+
+或直接执行：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\docker-up.ps1
+```
+
+启动后访问：
+
+- Web 页面：`http://127.0.0.1:8080`
+- 健康检查：`http://127.0.0.1:8080/health`
+
+说明：
+
+- 前端通过 Nginx 承载，并反向代理 `/api`、`/assets`、`/health` 到后端
+- 后端 SQLite 数据挂载到 Docker 卷 `backend_data`
+- 批量导出临时文件挂载到 Docker 卷 `backend_exports`
+- 关闭当前终端后容器仍会继续运行
+
+停止服务：
+
+```powershell
+docker compose down
+```
+
+也可直接执行：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\docker-down.ps1
+```
+
+查看日志：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\docker-logs.ps1
+```
+
+仅查看某个服务日志：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\docker-logs.ps1 backend
+```
+
 ## 环境变量
 
 如需启用邮箱注册/找回密码验证码能力，可在项目根目录创建 `.env`，参考 `.env.example`：
@@ -136,6 +207,13 @@ NINE_GRID_SMTP_PASSWORD=your_smtp_authorization_code
 NINE_GRID_MAIL_FROM=your_mail@qq.com
 NINE_GRID_SMTP_USE_SSL=true
 ```
+
+常用运行时变量：
+
+- `NINE_GRID_ALLOWED_ORIGINS`：后端允许跨域来源，多个值用英文逗号分隔
+- `NINE_GRID_DB_PATH`：SQLite 数据库文件路径
+- `NINE_GRID_TEMP_DIR`：批量导出任务的临时文件目录
+- `VITE_API_BASE_URL`：前端接口前缀；开发态通常留空，生产构建默认使用相对路径 `/api`
 
 如果未正确配置 SMTP，涉及验证码发送的功能将无法正常工作。
 

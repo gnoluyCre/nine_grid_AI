@@ -1,5 +1,5 @@
-# input: BirthChartService、日期范围与临时文件目录。
-# output: 一次性批量测算任务、CSV 导出文件与任务状态查询能力。
+# input: BirthChartService、日期范围与可配置临时文件目录。
+# output: 一次性批量测算任务、xlsx 导出文件与任务状态查询能力。
 # pos: 后端批量导出服务层。
 # 一旦我被更新务必更新我的开头注释以及所属文件夹的 md
 from __future__ import annotations
