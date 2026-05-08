@@ -1,11 +1,13 @@
-// input: 表单值、地区选项、可空字段规则与提交回调。
-// output: 首页出生信息录入表单与提交可用性控制。
+// input: 表单值、地区选项、可空字段规则、批量文本与提交回调。
+// output: 可滚动首页内同宽紧凑的单人/批量排盘录入、系统状态与提交可用性控制。
 // pos: 前端录入区的核心表单组件。
 // 一旦我被更新务必更新我的开头注释以及所属文件夹的 md
 import { useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import type { BirthFormValue, PickerDraftState, RegionTreeNode } from "../types/models";
 import { formatDateParts, formatTimeParts, parseDateParts, parseTimeParts } from "../lib/formState";
 import { findRegionSelectionById } from "../lib/regionTree";
+import { BatchBirthInput } from "./BatchBirthInput";
 import { PickerSheet } from "./PickerSheet";
 import { RegionPicker } from "./RegionPicker";
 import { SubmitAction } from "./SubmitAction";
@@ -16,10 +18,16 @@ interface BirthFormProps {
   onChange: (nextValue: BirthFormValue) => void;
   onSubmit: () => void;
   onBatchExport?: () => void;
+  batchInputValue: string;
+  batchInputError?: string;
+  batchInputLoading?: boolean;
+  onBatchInputChange: (value: string) => void;
+  onBatchInputSubmit: () => void;
   loading?: boolean;
   editing?: boolean;
   batchExportDisabled?: boolean;
   batchExportHint?: string;
+  statusPanel?: ReactNode;
 }
 
 const GENDER_OPTIONS = ["男", "女"];
@@ -34,10 +42,16 @@ export function BirthForm({
   onChange,
   onSubmit,
   onBatchExport,
+  batchInputValue,
+  batchInputError = "",
+  batchInputLoading = false,
+  onBatchInputChange,
+  onBatchInputSubmit,
   loading = false,
   editing = false,
   batchExportDisabled = false,
   batchExportHint = "",
+  statusPanel,
 }: BirthFormProps) {
   const [activePicker, setActivePicker] = useState<"date" | "time" | null>(null);
   const selectedRegion = useMemo(() => findRegionSelectionById(regionTree, value.regionId), [regionTree, value.regionId]);
@@ -67,92 +81,113 @@ export function BirthForm({
 
   return (
     <>
-      <div className="card-surface w-full p-6 sm:p-8">
-        <div className="mb-8 space-y-3">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-plum/55">信息录入</p>
-          <h2 className="font-display text-3xl font-extrabold tracking-tight text-ink">开始生成排盘结果</h2>
-          <p className="max-w-2xl text-sm leading-6 text-ink/65">
-            填写出生日期、时间、地区和基础信息后，系统将计算真太阳时、方案关系、阴阳格与灵魂结构。
+      <div className="card-surface h-full w-full p-4 sm:p-5">
+        <div className="mb-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+          <div className="space-y-1.5">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-plum/55">信息录入</p>
+            <h2 className="font-display text-2xl font-extrabold tracking-tight text-ink">开始生成排盘结果</h2>
+            <p className="max-w-3xl text-sm leading-5 text-ink/65">
+              填写出生日期、时间、地区和基础信息后，系统将计算真太阳时、方案关系、阴阳格与灵魂结构。
+            </p>
+          </div>
+          <p className="rounded-full border border-plum/10 bg-plum/5 px-4 py-2 text-xs font-semibold text-plum/72">
+            生日必填，其余信息可后续补充
           </p>
         </div>
 
-        <div className="grid gap-5 sm:grid-cols-2">
-          <label className="block sm:col-span-2">
-            <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-plum/60">档案名</span>
-            <input
-              className="field-shell w-full"
-              value={value.name}
-              onChange={(event) => updateField("name", event.target.value)}
-              placeholder="请输入档案名"
-            />
-          </label>
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.08fr)_minmax(24rem,0.92fr)]">
+          <div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="block">
+                <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-plum/60">档案名</span>
+                <input
+                  className="field-shell w-full"
+                  value={value.name}
+                  onChange={(event) => updateField("name", event.target.value)}
+                  placeholder="请输入档案名"
+                />
+              </label>
 
-          <div className="block">
-            <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-plum/60">性别</span>
-            <div className="grid grid-cols-2 gap-3">
-              {GENDER_OPTIONS.map((option) => (
-                <button
-                  key={option}
-                  type="button"
-                  onClick={() => updateField("gender", value.gender === option ? "" : option)}
-                  className={`segmented-card ${value.gender === option ? "segmented-card-active" : ""}`}
-                >
-                  {option}
-                </button>
-              ))}
+              <div className="block">
+                <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-plum/60">性别</span>
+                <div className="grid grid-cols-2 gap-3">
+                  {GENDER_OPTIONS.map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => updateField("gender", value.gender === option ? "" : option)}
+                      className={`segmented-card ${value.gender === option ? "segmented-card-active" : ""}`}
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-1.5 text-xs text-ink/48">选填，再次点击当前选项可清空。</p>
+              </div>
+
+              <PickerTrigger
+                label="公历生日"
+                value={value.birthDate || "请选择出生日期"}
+                meta={value.birthDate ? "已选择" : "必填"}
+                empty={!value.birthDate}
+                onClick={() => setActivePicker("date")}
+              />
+
+              <PickerTrigger
+                label="出生时间"
+                value={value.birthTime || "请选择出生时辰"}
+                meta={value.birthTime ? "已选择" : "选填"}
+                empty={!value.birthTime}
+                onClick={() => setActivePicker("time")}
+              />
+              {value.birthTime ? (
+                <div className="-mt-2 sm:col-start-2">
+                  <button
+                    type="button"
+                    onClick={() => updateField("birthTime", "")}
+                    className="text-xs font-medium text-plum/58 transition hover:text-plum"
+                  >
+                    清空时辰
+                  </button>
+                </div>
+              ) : null}
+
+              <div className="sm:col-span-2">
+                <RegionPicker regionTree={regionTree} value={value.regionId} onChange={(regionId) => updateField("regionId", regionId)} />
+                {selectedRegion ? (
+                  <p className="mt-2 text-xs text-ink/48">
+                    当前用于计算的地区：{selectedRegion.provinceName} / {selectedRegion.cityName} / {selectedRegion.districtName}
+                  </p>
+                ) : (
+                  <p className="mt-2 text-xs text-ink/48">未填写地区时不会计算真太阳时，相关结果统一显示为未知。</p>
+                )}
+              </div>
             </div>
-            <p className="mt-2 text-xs text-ink/48">性别为选填项，再次点击当前选项可清空。</p>
+
+            <SubmitAction
+              onSubmit={onSubmit}
+              onSecondaryAction={onBatchExport}
+              loading={loading}
+              editing={editing}
+              disabled={!canSubmit}
+              secondaryLabel="批量测算"
+              secondaryDisabled={loading || batchExportDisabled}
+              secondaryHint={batchExportHint}
+            />
           </div>
 
-          <PickerTrigger
-            label="公历生日"
-            value={value.birthDate || "请选择出生日期"}
-            meta={value.birthDate ? "已选择" : "必填"}
-            empty={!value.birthDate}
-            onClick={() => setActivePicker("date")}
-          />
-
-          <PickerTrigger
-            label="出生时间"
-            value={value.birthTime || "请选择出生时辰"}
-            meta={value.birthTime ? "已选择" : "选填"}
-            empty={!value.birthTime}
-            onClick={() => setActivePicker("time")}
-          />
-          {value.birthTime ? (
-            <div className="-mt-2 sm:col-start-2">
-              <button
-                type="button"
-                onClick={() => updateField("birthTime", "")}
-                className="text-xs font-medium text-plum/58 transition hover:text-plum"
-              >
-                清空时辰
-              </button>
-            </div>
-          ) : null}
-
-          <div className="sm:col-span-2">
-            <RegionPicker regionTree={regionTree} value={value.regionId} onChange={(regionId) => updateField("regionId", regionId)} />
-            {selectedRegion ? (
-              <p className="mt-2 text-xs text-ink/48">
-                当前用于计算的地区：{selectedRegion.provinceName} / {selectedRegion.cityName} / {selectedRegion.districtName}
-              </p>
-            ) : (
-              <p className="mt-2 text-xs text-ink/48">未填写地区时不会计算真太阳时，相关结果统一显示为未知。</p>
-            )}
+          <div className="min-w-0 space-y-3">
+            <BatchBirthInput
+              value={batchInputValue}
+              loading={batchInputLoading}
+              disabled={loading || editing}
+              error={batchInputError}
+              onChange={onBatchInputChange}
+              onSubmit={onBatchInputSubmit}
+            />
+            {statusPanel}
           </div>
         </div>
-
-        <SubmitAction
-          onSubmit={onSubmit}
-          onSecondaryAction={onBatchExport}
-          loading={loading}
-          editing={editing}
-          disabled={!canSubmit}
-          secondaryLabel="批量测算"
-          secondaryDisabled={loading || batchExportDisabled}
-          secondaryHint={batchExportHint}
-        />
       </div>
 
       <PickerSheet
@@ -266,15 +301,17 @@ function PickerTrigger({
   meta,
   onClick,
   empty = false,
+  className = "",
 }: {
   label: string;
   value: string;
   meta: string;
   onClick: () => void;
   empty?: boolean;
+  className?: string;
 }) {
   return (
-    <div className="block">
+    <div className={`block ${className}`}>
       <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-plum/60">{label}</span>
       <button type="button" onClick={onClick} className={`picker-trigger w-full text-left ${empty ? "picker-trigger-empty" : ""}`}>
         <span>

@@ -1,5 +1,5 @@
 // input: 地区树、当前选择值与确认回调。
-// output: 支持留空的三级地区联动选择器。
+// output: 支持留空且弹层内完整可滚动的三级地区联动选择器。
 // pos: 出生地区录入专用选择组件。
 // 一旦我被更新务必更新我的开头注释以及所属文件夹的 md
 import { useEffect, useMemo, useState } from "react";
@@ -129,7 +129,7 @@ export function RegionPicker({ regionTree, value, onChange }: RegionPickerProps)
         }}
         onConfirm={handleConfirm}
       >
-        <div className="grid gap-4 lg:grid-cols-3">
+        <div className="grid min-h-0 gap-3 sm:grid-cols-3 sm:gap-4">
           <PickerColumn
             label="省份"
             items={regionTree.map((province) => ({
@@ -175,9 +175,9 @@ interface PickerColumnProps {
 
 function PickerColumn({ label, items, activeValue, onSelect }: PickerColumnProps) {
   return (
-    <section className="rounded-[28px] border border-line/80 bg-white/72 p-4">
+    <section className="min-h-0 rounded-[22px] border border-line/80 bg-white/72 p-3 sm:rounded-[28px] sm:p-4">
       <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-plum/55">{label}</p>
-      <div className="max-h-[18rem] space-y-2 overflow-y-auto pr-1">
+      <div className="max-h-[28vh] space-y-2 overflow-y-auto pr-1 sm:max-h-[46vh]">
         {items.map((item) => (
           <button
             key={item.value}

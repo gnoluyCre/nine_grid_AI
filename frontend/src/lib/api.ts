@@ -22,7 +22,7 @@ import type {
 } from "../types/models";
 
 const configuredApiBaseUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim();
-const API_BASE_URL = configuredApiBaseUrl || (import.meta.env.DEV ? "" : "/api");
+const API_BASE_URL = configuredApiBaseUrl || "/api";
 
 function resolveAssetBaseUrl(apiBaseUrl: string) {
   if (!apiBaseUrl) {

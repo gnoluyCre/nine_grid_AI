@@ -1,5 +1,5 @@
 // input: 档案详情响应、关闭回调与结果展示组件。
-// output: 对齐结果页实现的左右分栏档案详情弹层。
+// output: 对齐结果页固定视口实现的左右分栏档案详情弹层。
 // pos: 档案管理页的详情查看容器。
 // 一旦我被更新务必更新我的开头注释以及所属文件夹的 md
 import { useEffect, useMemo, useState } from "react";
@@ -72,25 +72,25 @@ export function RecordDetailDialog({
       onClick={onClose}
     >
       <section
-        className="relative flex h-[min(88vh,51rem)] w-full max-w-[min(95vw,84rem)] flex-col overflow-hidden rounded-[32px] border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.97),rgba(248,243,253,0.96))] shadow-soft"
+        className="relative flex h-[min(90vh,50rem)] w-full max-w-[min(96vw,88rem)] flex-col overflow-hidden rounded-[28px] border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.97),rgba(248,243,253,0.96))] shadow-soft"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-[#eee5f5] px-5 py-3.5 sm:px-6">
+        <div className="flex shrink-0 items-center justify-between border-b border-[#eee5f5] px-5 py-2.5 sm:px-6">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-plum/55">Record Detail</p>
-            <h2 className="mt-1.5 font-display text-[1.7rem] font-extrabold tracking-tight text-ink">档案详情</h2>
+            <h2 className="mt-1 font-display text-xl font-extrabold tracking-tight text-ink">档案详情</h2>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-plum/15 bg-white/88 text-xl font-semibold text-plum transition hover:bg-plum/5"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-plum/15 bg-white/88 text-lg font-semibold text-plum transition hover:bg-plum/5"
             aria-label="关闭详情"
           >
             ×
           </button>
         </div>
 
-        <div className="flex min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-4">
+        <div className="flex min-h-0 flex-1 overflow-hidden px-4 py-3 sm:px-5">
           {loading ? (
             <div className="flex h-full min-h-[16rem] items-center justify-center rounded-[28px] border border-line/80 bg-white/78 text-sm text-ink/55">
               档案详情加载中...
@@ -100,12 +100,12 @@ export function RecordDetailDialog({
               {error}
             </div>
           ) : viewModel && activeTab ? (
-            <div className="grid min-h-0 flex-1 items-start gap-3 xl:grid-cols-[minmax(0,1.08fr)_minmax(24rem,0.92fr)]">
-              <section className="flex min-h-0 flex-col">
-                <div className="rounded-[20px] border border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.92),rgba(247,241,252,0.92))] px-4 py-3">
+            <div className="grid min-h-0 flex-1 items-stretch gap-3 xl:grid-cols-[minmax(0,1.08fr)_minmax(23rem,0.92fr)]">
+              <section className="flex h-full min-h-0 flex-col">
+                <div className="shrink-0 rounded-[18px] border border-white/75 bg-[linear-gradient(180deg,rgba(255,255,255,0.92),rgba(247,241,252,0.92))] px-3 py-2">
                   <div className="flex flex-wrap items-center gap-2">
                     {hasMultipleCases ? (
-                      <div className="inline-flex rounded-full border border-plum/10 bg-white/82 p-1 shadow-sm">
+                      <div className="inline-flex rounded-full border border-plum/10 bg-white/82 p-0.5 shadow-sm">
                         {viewModel.caseSelector.items.map((item) => {
                           const active = item.index === activeCaseIndex;
 
@@ -114,7 +114,7 @@ export function RecordDetailDialog({
                               key={item.index}
                               type="button"
                               onClick={() => setActiveCaseIndex(item.index)}
-                              className={`rounded-full px-3 py-1.5 text-xs font-display font-bold transition ${
+                              className={`rounded-full px-2.5 py-1 text-xs font-display font-bold transition ${
                                 active ? "bg-plum text-white shadow-sm" : "text-ink/58 hover:text-plum"
                               }`}
                             >
@@ -127,24 +127,24 @@ export function RecordDetailDialog({
                     <ChartModeToggle mode={mode} onChange={setMode} />
                   </div>
 
-                  <div className="mt-2.5 space-y-1.5">
+                  <div className="mt-2 space-y-1">
                     <ResultBannerList banners={viewModel.banners} />
                   </div>
                 </div>
 
-                <div className="mt-3 min-h-0 flex-1">
+                <div className="mt-2 min-h-0 flex-1">
                   <NineGridBoard grid={activeTab.grid} title={activeTab.label} />
                 </div>
               </section>
 
-              <section className="min-h-0 rounded-[24px] border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(245,238,252,0.98))] p-4 shadow-soft">
-                <div className="mb-3">
+              <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-[24px] border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(245,238,252,0.98))] p-3 shadow-soft">
+                <div className="mb-2 shrink-0">
                   <p className="font-display text-[11px] font-bold uppercase tracking-[0.22em] text-plum/62">分析概览</p>
-                  <h2 className="mt-1 font-display text-[1.35rem] font-extrabold tracking-tight text-ink">
+                  <h2 className="mt-0.5 font-display text-lg font-extrabold tracking-tight text-ink">
                     {viewModel.summary.name || "未命名档案"}
                   </h2>
                 </div>
-                <div className="min-h-0">
+                <div className="min-h-0 flex-1 overflow-y-auto pr-1">
                   <MetricsPanel
                     summary={viewModel.summary}
                     metrics={viewModel.activeCase.metrics}
