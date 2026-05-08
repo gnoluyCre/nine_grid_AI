@@ -1,8 +1,8 @@
 // input: 表单值、地区选项、可空字段规则、批量文本与提交回调。
-// output: 可滚动首页内同宽紧凑的单人/批量排盘录入、系统状态与提交可用性控制。
+// output: 可滚动首页内同宽紧凑的单人/批量排盘录入、低重渲染选择弹层、系统状态与提交可用性控制。
 // pos: 前端录入区的核心表单组件。
 // 一旦我被更新务必更新我的开头注释以及所属文件夹的 md
-import { useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import type { BirthFormValue, PickerDraftState, RegionTreeNode } from "../types/models";
 import { formatDateParts, formatTimeParts, parseDateParts, parseTimeParts } from "../lib/formState";
@@ -35,6 +35,22 @@ const YEAR_OPTIONS = buildYearOptions();
 const MONTH_OPTIONS = Array.from({ length: 12 }, (_, index) => index + 1);
 const HOUR_OPTIONS = Array.from({ length: 24 }, (_, index) => index);
 const MINUTE_OPTIONS = Array.from({ length: 60 }, (_, index) => index);
+const YEAR_PICKER_ITEMS = YEAR_OPTIONS.map((year) => ({
+  value: String(year),
+  label: `${year}年`,
+}));
+const MONTH_PICKER_ITEMS = MONTH_OPTIONS.map((month) => ({
+  value: String(month),
+  label: `${month}月`,
+}));
+const HOUR_PICKER_ITEMS = HOUR_OPTIONS.map((hour) => ({
+  value: String(hour),
+  label: `${String(hour).padStart(2, "0")} 时`,
+}));
+const MINUTE_PICKER_ITEMS = MINUTE_OPTIONS.map((minute) => ({
+  value: String(minute),
+  label: `${String(minute).padStart(2, "0")} 分`,
+}));
 
 export function BirthForm({
   value,
@@ -55,8 +71,10 @@ export function BirthForm({
 }: BirthFormProps) {
   const [activePicker, setActivePicker] = useState<"date" | "time" | null>(null);
   const selectedRegion = useMemo(() => findRegionSelectionById(regionTree, value.regionId), [regionTree, value.regionId]);
-  const dateDraft = useDateDraft(value.birthDate);
-  const timeDraft = useTimeDraft(value.birthTime);
+  const parsedDateValue = useDateDraft(value.birthDate);
+  const parsedTimeValue = useTimeDraft(value.birthTime);
+  const [dateDraft, setDateDraft] = useState<PickerDraftState>(parsedDateValue);
+  const [timeDraft, setTimeDraft] = useState<PickerDraftState>(parsedTimeValue);
   const canSubmit = value.birthDate.trim().length > 0 && !loading;
 
   function updateField<Key extends keyof BirthFormValue>(key: Key, fieldValue: BirthFormValue[Key]) {
@@ -72,12 +90,72 @@ export function BirthForm({
   const selectedDay = Math.min(dateDraft.day ?? 1, availableDays);
   const selectedHour = timeDraft.hour ?? 12;
   const selectedMinute = timeDraft.minute ?? 0;
+  const dayPickerItems = useMemo(
+    () =>
+      Array.from({ length: availableDays }, (_, index) => index + 1).map((day) => ({
+        value: String(day),
+        label: `${day}日`,
+      })),
+    [availableDays],
+  );
+
+  useEffect(() => {
+    if (activePicker !== "date") {
+      setDateDraft(parsedDateValue);
+    }
+  }, [activePicker, parsedDateValue]);
+
+  useEffect(() => {
+    if (activePicker !== "time") {
+      setTimeDraft(parsedTimeValue);
+    }
+  }, [activePicker, parsedTimeValue]);
 
   useEffect(() => {
     if (dateDraft.day && dateDraft.day > availableDays) {
-      updateField("birthDate", formatDateParts(selectedYear, selectedMonth, availableDays));
+      setDateDraft({
+        year: selectedYear,
+        month: selectedMonth,
+        day: availableDays,
+      });
     }
   }, [availableDays, dateDraft.day, selectedMonth, selectedYear]);
+
+  function openDatePicker() {
+    setDateDraft(parsedDateValue);
+    setActivePicker("date");
+  }
+
+  function openTimePicker() {
+    setTimeDraft(parsedTimeValue);
+    setActivePicker("time");
+  }
+
+  function closePicker() {
+    setDateDraft(parsedDateValue);
+    setTimeDraft(parsedTimeValue);
+    setActivePicker(null);
+  }
+
+  function updateDateDraft(nextValue: Partial<PickerDraftState>) {
+    setDateDraft((currentDraft) => {
+      const nextYear = nextValue.year ?? currentDraft.year ?? YEAR_OPTIONS[0];
+      const nextMonth = nextValue.month ?? currentDraft.month ?? 1;
+      const nextDay = Math.min(nextValue.day ?? currentDraft.day ?? 1, getDaysInMonth(nextYear, nextMonth));
+      return {
+        year: nextYear,
+        month: nextMonth,
+        day: nextDay,
+      };
+    });
+  }
+
+  function updateTimeDraft(nextValue: Partial<PickerDraftState>) {
+    setTimeDraft((currentDraft) => ({
+      hour: nextValue.hour ?? currentDraft.hour ?? 12,
+      minute: nextValue.minute ?? currentDraft.minute ?? 0,
+    }));
+  }
 
   return (
     <>
@@ -130,7 +208,7 @@ export function BirthForm({
                 value={value.birthDate || "请选择出生日期"}
                 meta={value.birthDate ? "已选择" : "必填"}
                 empty={!value.birthDate}
-                onClick={() => setActivePicker("date")}
+                onClick={openDatePicker}
               />
 
               <PickerTrigger
@@ -138,7 +216,7 @@ export function BirthForm({
                 value={value.birthTime || "请选择出生时辰"}
                 meta={value.birthTime ? "已选择" : "选填"}
                 empty={!value.birthTime}
-                onClick={() => setActivePicker("time")}
+                onClick={openTimePicker}
               />
               {value.birthTime ? (
                 <div className="-mt-2 sm:col-start-2">
@@ -190,80 +268,67 @@ export function BirthForm({
         </div>
       </div>
 
-      <PickerSheet
-        open={activePicker === "date"}
-        title="选择出生日期"
-        description="生日为必填项，支持按年月日逐列选择，系统会自动处理大小月和闰年。"
-        onClose={() => setActivePicker(null)}
-        onConfirm={() => {
-          updateField("birthDate", formatDateParts(selectedYear, selectedMonth, selectedDay));
-          setActivePicker(null);
-        }}
-      >
-        <div className="grid gap-4 lg:grid-cols-3">
-          <PickerColumn
-            label="年份"
-            items={YEAR_OPTIONS.map((year) => ({
-              value: String(year),
-              label: `${year}年`,
-            }))}
-            activeValue={String(selectedYear)}
-            onSelect={(nextYear) => updateField("birthDate", formatDateParts(Number(nextYear), selectedMonth, selectedDay))}
-          />
-          <PickerColumn
-            label="月份"
-            items={MONTH_OPTIONS.map((month) => ({
-              value: String(month),
-              label: `${month}月`,
-            }))}
-            activeValue={String(selectedMonth)}
-            onSelect={(nextMonth) =>
-              updateField("birthDate", formatDateParts(selectedYear, Number(nextMonth), Math.min(selectedDay, getDaysInMonth(selectedYear, Number(nextMonth)))))
-            }
-          />
-          <PickerColumn
-            label="日期"
-            items={Array.from({ length: availableDays }, (_, index) => index + 1).map((day) => ({
-              value: String(day),
-              label: `${day}日`,
-            }))}
-            activeValue={String(selectedDay)}
-            onSelect={(nextDay) => updateField("birthDate", formatDateParts(selectedYear, selectedMonth, Number(nextDay)))}
-          />
-        </div>
-      </PickerSheet>
+      {activePicker === "date" ? (
+        <PickerSheet
+          open
+          title="选择出生日期"
+          description="生日为必填项，支持按年月日逐列选择，系统会自动处理大小月和闰年。"
+          onClose={closePicker}
+          onConfirm={() => {
+            updateField("birthDate", formatDateParts(selectedYear, selectedMonth, selectedDay));
+            setActivePicker(null);
+          }}
+        >
+          <div className="grid gap-4 lg:grid-cols-3">
+            <PickerColumn
+              label="年份"
+              items={YEAR_PICKER_ITEMS}
+              activeValue={String(selectedYear)}
+              onSelect={(nextYear) => updateDateDraft({ year: Number(nextYear) })}
+            />
+            <PickerColumn
+              label="月份"
+              items={MONTH_PICKER_ITEMS}
+              activeValue={String(selectedMonth)}
+              onSelect={(nextMonth) => updateDateDraft({ month: Number(nextMonth) })}
+            />
+            <PickerColumn
+              label="日期"
+              items={dayPickerItems}
+              activeValue={String(selectedDay)}
+              onSelect={(nextDay) => updateDateDraft({ day: Number(nextDay) })}
+            />
+          </div>
+        </PickerSheet>
+      ) : null}
 
-      <PickerSheet
-        open={activePicker === "time"}
-        title="选择出生时间"
-        description="时间为选填项，你可以按小时和分钟逐项调整；未填写时相关时辰与半补展示为未知。"
-        onClose={() => setActivePicker(null)}
-        onConfirm={() => {
-          updateField("birthTime", formatTimeParts(selectedHour, selectedMinute));
-          setActivePicker(null);
-        }}
-      >
-        <div className="grid gap-4 lg:grid-cols-2">
-          <PickerColumn
-            label="小时"
-            items={HOUR_OPTIONS.map((hour) => ({
-              value: String(hour),
-              label: `${String(hour).padStart(2, "0")} 时`,
-            }))}
-            activeValue={String(selectedHour)}
-            onSelect={(nextHour) => updateField("birthTime", formatTimeParts(Number(nextHour), selectedMinute))}
-          />
-          <PickerColumn
-            label="分钟"
-            items={MINUTE_OPTIONS.map((minute) => ({
-              value: String(minute),
-              label: `${String(minute).padStart(2, "0")} 分`,
-            }))}
-            activeValue={String(selectedMinute)}
-            onSelect={(nextMinute) => updateField("birthTime", formatTimeParts(selectedHour, Number(nextMinute)))}
-          />
-        </div>
-      </PickerSheet>
+      {activePicker === "time" ? (
+        <PickerSheet
+          open
+          title="选择出生时间"
+          description="时间为选填项，你可以按小时和分钟逐项调整；未填写时相关时辰与半补展示为未知。"
+          onClose={closePicker}
+          onConfirm={() => {
+            updateField("birthTime", formatTimeParts(selectedHour, selectedMinute));
+            setActivePicker(null);
+          }}
+        >
+          <div className="grid gap-4 lg:grid-cols-2">
+            <PickerColumn
+              label="小时"
+              items={HOUR_PICKER_ITEMS}
+              activeValue={String(selectedHour)}
+              onSelect={(nextHour) => updateTimeDraft({ hour: Number(nextHour) })}
+            />
+            <PickerColumn
+              label="分钟"
+              items={MINUTE_PICKER_ITEMS}
+              activeValue={String(selectedMinute)}
+              onSelect={(nextMinute) => updateTimeDraft({ minute: Number(nextMinute) })}
+            />
+          </div>
+        </PickerSheet>
+      ) : null}
     </>
   );
 }
@@ -324,7 +389,7 @@ function PickerTrigger({
   );
 }
 
-function PickerColumn({
+const PickerColumn = memo(function PickerColumn({
   label,
   items,
   activeValue,
@@ -352,4 +417,4 @@ function PickerColumn({
       </div>
     </section>
   );
-}
+});
