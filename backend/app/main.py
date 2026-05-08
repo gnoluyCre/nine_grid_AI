@@ -1,4 +1,4 @@
-# input: 环境变量、数据库路径、临时目录与 FastAPI 中间件配置。
+# input: 环境变量、数据库路径、临时目录、本地前端端口与 FastAPI 中间件配置。
 # output: 已装配完成的 FastAPI 应用实例与运行时资源装配结果。
 # pos: 后端运行时总入口。
 # 一旦我被更新务必更新我的开头注释以及所属文件夹的 md
@@ -66,6 +66,8 @@ def resolve_allowed_origins() -> list[str]:
     return [
         "http://127.0.0.1:5173",
         "http://localhost:5173",
+        "http://127.0.0.1:3001",
+        "http://localhost:3001",
     ]
 
 

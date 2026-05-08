@@ -40,7 +40,7 @@
   }
 
   .field-shell {
-    @apply rounded-2xl border border-[#e8deef] bg-white/90 px-4 py-3 text-sm text-ink shadow-sm outline-none transition focus:border-plum focus:ring-2 focus:ring-plum/10;
+    @apply rounded-2xl border border-[#e8deef] bg-white/90 px-4 py-2.5 text-sm text-ink shadow-sm outline-none transition focus:border-plum focus:ring-2 focus:ring-plum/10;
   }
 
   .metric-row {
@@ -48,7 +48,7 @@
   }
 
   .segmented-card {
-    @apply inline-flex w-full items-center justify-center rounded-[999px] border border-[#d2c6e1] bg-[#f7f2fb] px-4 py-3 text-sm font-semibold text-ink shadow-[inset_0_0_0_1px_rgba(255,255,255,0.55)] transition duration-200 hover:border-[#baa7d6] hover:bg-[#f1e9fa];
+    @apply inline-flex w-full items-center justify-center rounded-[999px] border border-[#d2c6e1] bg-[#f7f2fb] px-4 py-2.5 text-sm font-semibold text-ink shadow-[inset_0_0_0_1px_rgba(255,255,255,0.55)] transition duration-200 hover:border-[#baa7d6] hover:bg-[#f1e9fa];
   }
 
   .segmented-card-active {
@@ -56,7 +56,7 @@
   }
 
   .picker-trigger {
-    @apply flex min-h-[5rem] items-center justify-between gap-4 rounded-[24px] border border-line/80 bg-white/90 px-4 py-4 shadow-sm transition hover:border-plum/30 hover:bg-plum/5;
+    @apply flex min-h-[4.2rem] items-center justify-between gap-4 rounded-[22px] border border-line/80 bg-white/90 px-4 py-3 shadow-sm transition hover:border-plum/30 hover:bg-plum/5;
   }
 
   .picker-trigger-empty {
@@ -68,7 +68,7 @@
   }
 
   .picker-trigger-value {
-    @apply mt-2 block font-display text-lg font-bold tracking-tight text-ink;
+    @apply mt-1.5 block font-display text-base font-bold tracking-tight text-ink;
   }
 
   .picker-trigger-meta {
@@ -93,5 +93,29 @@
 
   .picker-icon-button {
     @apply rounded-full border border-line bg-white px-4 py-2 text-sm font-semibold text-ink transition hover:border-plum/20 hover:bg-plum/5;
+  }
+
+  .batch-input-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(101, 83, 135, 0.42) rgba(239, 231, 247, 0.72);
+  }
+
+  .batch-input-scroll::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .batch-input-scroll::-webkit-scrollbar-track {
+    border-radius: 999px;
+    background: rgba(239, 231, 247, 0.72);
+  }
+
+  .batch-input-scroll::-webkit-scrollbar-thumb {
+    border: 2px solid rgba(239, 231, 247, 0.72);
+    border-radius: 999px;
+    background: rgba(101, 83, 135, 0.48);
+  }
+
+  .batch-input-scroll::-webkit-scrollbar-thumb:hover {
+    background: rgba(101, 83, 135, 0.66);
   }
 }

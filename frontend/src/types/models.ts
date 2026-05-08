@@ -1,5 +1,5 @@
-// input: 后端接口字段、前端展示结构与档案列表/结果页共享数据约定。
-// output: 前端全局共享类型定义与档案列表、结果页展示字段。
+// input: 后端接口字段、前端展示结构、批量排盘与档案列表/结果页共享数据约定。
+// output: 前端全局共享类型定义、批量排盘结果与档案列表、结果页展示字段。
 // pos: 前端类型系统中心。
 // 一旦我被更新务必更新我的开头注释以及所属文件夹的 md
 export type ChartMode = "yang" | "yin";
@@ -202,6 +202,13 @@ export interface BirthChartApiResponse {
   summary: ResultSummaryViewModel;
   banners: BannerViewModel[];
   cases: ApiCaseViewModel[];
+}
+
+export interface BatchChartResultItem {
+  formValue: BirthFormValue;
+  payload: BirthChartApiResponse | ChartRecordDetailResponse;
+  recordId?: number;
+  recordAction?: "created";
 }
 
 export interface ChartRecordListItem {

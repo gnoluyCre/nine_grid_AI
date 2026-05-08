@@ -1,5 +1,5 @@
 // input: 鉴权状态、档案 API、路由跳转与详情/确认弹窗组件。
-// output: 含特殊案例标签与居中操作栏的紧凑档案列表。
+// output: 含超紧凑档案列表、搜索和详情弹层的档案管理页面。
 // pos: 前端档案管理页面容器。
 // 一旦我被更新务必更新我的开头注释以及所属文件夹的 md
 import { useEffect, useState } from "react";
@@ -234,21 +234,21 @@ export function RecordsPage() {
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
-    <main className="min-h-screen px-4 py-8 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-5xl space-y-6">
-        <section className="card-surface p-6 sm:p-7">
+    <main className="min-h-screen px-4 py-4 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl space-y-3">
+        <section className="card-surface p-4 sm:p-5">
           <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="flex flex-wrap items-center gap-3">
                 <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.24em] text-plum/60">Archive Center</p>
-                <h1 className="mt-2 font-display text-3xl font-extrabold tracking-tight text-ink">档案管理</h1>
-                <p className="mt-3 text-sm leading-6 text-ink/62">查看已保存档案，支持回填编辑和删除。</p>
+                <h1 className="mt-1 font-display text-2xl font-extrabold tracking-tight text-ink">档案管理</h1>
+                <p className="mt-1 text-sm leading-5 text-ink/62">查看已保存档案，支持回填编辑和删除。</p>
                 </div>
                 <button
                   type="button"
                   onClick={() => void handleExportRecords()}
                   disabled={loading || exporting}
-                  className="rounded-full border border-plum/15 bg-white/82 px-4 py-2 text-sm font-semibold text-plum transition hover:bg-plum/5 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="rounded-full border border-plum/15 bg-white/82 px-3.5 py-1.5 text-xs font-semibold text-plum transition hover:bg-plum/5 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {exporting ? "导出中..." : "批量导出档案"}
                 </button>
@@ -257,14 +257,14 @@ export function RecordsPage() {
               <button
                 type="button"
                 onClick={() => navigate("/")}
-                className="rounded-full border border-plum/15 bg-white/82 px-4 py-2 text-sm font-semibold text-plum transition hover:bg-plum/5"
+                className="rounded-full border border-plum/15 bg-white/82 px-3.5 py-1.5 text-xs font-semibold text-plum transition hover:bg-plum/5"
               >
                 返回首页
               </button>
               <UserAccountPanel />
             </div>
           </div>
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
             <div className="flex min-w-[18rem] flex-1 flex-wrap items-center gap-3">
               <input
                 className="field-shell min-w-[16rem] flex-1"
@@ -275,7 +275,7 @@ export function RecordsPage() {
               <button
                 type="button"
                 onClick={handleSearch}
-                className="rounded-full border border-plum/15 bg-white/82 px-5 py-2.5 text-sm font-semibold text-plum transition hover:bg-plum/5"
+                className="rounded-full border border-plum/15 bg-white/82 px-4 py-2 text-xs font-semibold text-plum transition hover:bg-plum/5"
               >
                 搜索
               </button>
@@ -283,7 +283,7 @@ export function RecordsPage() {
             <button
               type="button"
               onClick={handleCreateNewRecord}
-              className="rounded-full bg-gradient-to-r from-plum to-iris px-5 py-2.5 text-sm font-semibold text-white shadow-soft transition hover:translate-y-[-1px]"
+              className="rounded-full bg-gradient-to-r from-plum to-iris px-4 py-2 text-xs font-semibold text-white shadow-soft transition hover:translate-y-[-1px]"
             >
               新增档案
             </button>
@@ -296,13 +296,13 @@ export function RecordsPage() {
           </section>
         ) : null}
 
-        <section className="card-surface p-4 sm:p-5">
-          <div className="mb-4 flex items-center justify-between gap-3">
+        <section className="card-surface p-3 sm:p-4">
+          <div className="mb-3 flex items-center justify-between gap-3">
               <p className="text-sm font-semibold text-ink/72">共 {total} 条档案</p>
               <p className="text-xs text-ink/48">每页 10 条，最新添加优先展示</p>
             </div>
 
-          <div className="max-h-[68vh] space-y-4 overflow-y-auto pr-1">
+          <div className="max-h-[70vh] space-y-1.5 overflow-y-auto pr-1">
             {loading ? (
               <div className="rounded-[24px] border border-line/80 bg-white/78 px-4 py-8 text-center text-sm text-ink/55">
                 档案加载中...
@@ -313,37 +313,31 @@ export function RecordsPage() {
               </div>
             ) : (
               items.map((item) => (
-                <article key={item.id} className="rounded-[24px] border border-line/80 bg-white/88 px-5 py-4 shadow-sm">
-                  <div className="flex gap-6">
-                    <div className="min-w-0 basis-2/3">
-                      <div className="flex min-w-0 items-center gap-3">
-                        <h2 className="truncate font-display text-[2rem] font-extrabold tracking-tight text-ink">
+                <article key={item.id} className="rounded-[16px] border border-line/80 bg-white/88 px-3 py-2 shadow-sm">
+                  <div className="grid items-center gap-3 lg:grid-cols-[minmax(12rem,0.9fr)_minmax(0,1.55fr)_auto]">
+                    <div className="flex min-w-0 items-center gap-2">
+                        <h2 className="truncate font-display text-base font-extrabold tracking-tight text-ink">
                           {item.name || "未命名档案"}
                         </h2>
                         <TagBadge tone={resolveGenderTone(item.gender)}>{formatUnknownDisplay(item.gender)}</TagBadge>
                         {resolveSpecialCaseLabel(item) ? <TagBadge tone="amber">{resolveSpecialCaseLabel(item)}</TagBadge> : null}
-                      </div>
-
-                      <div className="mt-4 grid grid-cols-2 gap-x-10 gap-y-3">
-                        <div className="space-y-3">
-                          <RecordInfoRow label="阳历" value={joinDateAndShichen(item.firstCaseSolarBirthday, item.trueSolarShichen)} />
-                          <RecordInfoRow label="阴历" value={joinDateAndShichen(item.firstCaseLunarBirthday, item.trueSolarShichen)} />
-                        </div>
-                        <div className="space-y-3">
-                          <RecordInfoRow label="阳格" value={`${item.firstCaseYangDigitString}/${item.firstCaseYangMissingDigits}`} />
-                          <RecordInfoRow label="阴格" value={`${item.firstCaseYinDigitString}/${item.firstCaseYinMissingDigits}`} />
-                        </div>
-                      </div>
                     </div>
 
-                    <div className="basis-1/3 shrink-0 self-center">
-                      <div className="flex w-full items-center justify-end">
-                        <div className="flex w-full flex-nowrap justify-end gap-2 rounded-[22px] border border-line/80 bg-[#fbf8ff] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
+                    <div className="grid min-w-0 gap-x-4 gap-y-1 sm:grid-cols-2 xl:grid-cols-4">
+                      <RecordInfoRow label="阳历" value={joinDateAndShichen(item.firstCaseSolarBirthday, item.trueSolarShichen)} />
+                      <RecordInfoRow label="阴历" value={joinDateAndShichen(item.firstCaseLunarBirthday, item.trueSolarShichen)} />
+                      <RecordInfoRow label="阳格" value={`${item.firstCaseYangDigitString}/${item.firstCaseYangMissingDigits}`} />
+                      <RecordInfoRow label="阴格" value={`${item.firstCaseYinDigitString}/${item.firstCaseYinMissingDigits}`} />
+                    </div>
+
+                    <div className="shrink-0">
+                      <div className="flex items-center justify-end">
+                        <div className="flex flex-nowrap justify-end gap-1.5 rounded-[14px] border border-line/80 bg-[#fbf8ff] p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
                           <button
                             type="button"
                             onClick={() => void handleViewDetail(item.id)}
                             disabled={busyRecordId === item.id}
-                            className="whitespace-nowrap rounded-full border border-plum/15 bg-white px-4 py-2 text-sm font-semibold text-plum shadow-sm transition hover:bg-plum/5 disabled:cursor-not-allowed disabled:opacity-60"
+                            className="whitespace-nowrap rounded-full border border-plum/15 bg-white px-2.5 py-1 text-xs font-semibold text-plum shadow-sm transition hover:bg-plum/5 disabled:cursor-not-allowed disabled:opacity-60"
                           >
                             {busyRecordId === item.id && detailTargetId === item.id && detailLoading ? "加载中..." : "查看详情"}
                           </button>
@@ -351,7 +345,7 @@ export function RecordsPage() {
                             type="button"
                             onClick={() => handleEdit(item.id)}
                             disabled={busyRecordId === item.id}
-                            className="whitespace-nowrap rounded-full border border-plum/15 bg-white px-4 py-2 text-sm font-semibold text-plum shadow-sm transition hover:bg-plum/5 disabled:cursor-not-allowed disabled:opacity-60"
+                            className="whitespace-nowrap rounded-full border border-plum/15 bg-white px-2.5 py-1 text-xs font-semibold text-plum shadow-sm transition hover:bg-plum/5 disabled:cursor-not-allowed disabled:opacity-60"
                           >
                             {busyRecordId === item.id ? "处理中..." : "编辑档案"}
                           </button>
@@ -359,7 +353,7 @@ export function RecordsPage() {
                             type="button"
                             onClick={() => setDeleteTarget(item)}
                             disabled={busyRecordId === item.id}
-                            className="whitespace-nowrap rounded-full border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 shadow-sm transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+                            className="whitespace-nowrap rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-700 shadow-sm transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
                           >
                             删除档案
                           </button>
@@ -372,7 +366,7 @@ export function RecordsPage() {
             )}
           </div>
 
-          <div className="mt-5 flex items-center justify-between gap-3">
+          <div className="mt-3 flex items-center justify-between gap-3">
             <button
               type="button"
               onClick={() => setPage((current) => Math.max(1, current - 1))}
@@ -431,9 +425,9 @@ export function RecordsPage() {
 
 function RecordInfoRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-baseline gap-2 text-[15px] leading-7 text-ink/62">
+    <div className="flex min-w-0 items-baseline gap-1.5 text-xs leading-5 text-ink/62">
       <span className="shrink-0 font-medium text-ink/68">{label}:</span>
-      <span className="min-w-0 truncate text-[1.05rem] font-medium text-ink">{value}</span>
+      <span className="min-w-0 truncate text-xs font-medium text-ink">{value}</span>
     </div>
   );
 }
@@ -477,7 +471,7 @@ function TagBadge({ children, tone }: { children: string; tone: "blue" | "pink" 
           : "bg-[#eef2f7] text-[#64748b]";
 
   return (
-    <span className={`inline-flex shrink-0 items-center rounded-full px-4 py-1.5 text-lg font-semibold leading-none ${className}`}>
+    <span className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[11px] font-semibold leading-none ${className}`}>
       {children}
     </span>
   );

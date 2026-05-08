@@ -1,5 +1,5 @@
 // input: 排盘摘要、案例指标、模式与当前九宫格数据。
-// output: 分析概览内的基础信息、纵向灵魂结构与图腾天赋特质面板。
+// output: 可在固定高度容器中滚动的紧凑分析概览。
 // pos: 结果详情展示组件。
 // 一旦我被更新务必更新我的开头注释以及所属文件夹的 md
 import type { CaseMetricsViewModel, ChartMode, GridBoardViewModel, ResultSummaryViewModel } from "../types/models";
@@ -28,13 +28,13 @@ export function MetricsPanel({ summary, metrics, mode, activeGrid, layout = "sta
   const shellClassName =
     layout === "compact"
       ? "grid gap-3 xl:grid-cols-[minmax(0,0.94fr)_minmax(0,1.06fr)]"
-      : "space-y-4";
+      : "space-y-2.5";
 
   return (
     <section className={shellClassName}>
-      <div className="rounded-[22px] border border-[#e8def3] bg-[linear-gradient(180deg,rgba(255,255,255,0.9),rgba(250,245,253,0.96))] px-4 py-3.5 shadow-sm">
-        {showHeading ? <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-plum/55">基础信息</p> : null}
-        <div className="grid gap-3 sm:grid-cols-2">
+      <div className="rounded-[18px] border border-[#e8def3] bg-[linear-gradient(180deg,rgba(255,255,255,0.9),rgba(250,245,253,0.96))] px-3 py-2.5 shadow-sm">
+        {showHeading ? <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-plum/55">基础信息</p> : null}
+        <div className="grid gap-2 sm:grid-cols-2">
           <MetricBlock label="阳历生日·时辰" value={joinDateAndShichen(metrics.solarBirthday, shichenLabel)} />
           <MetricBlock label="农历生日·时辰" value={joinDateAndShichen(metrics.lunarBirthday, shichenLabel)} />
           <MetricBlock label="性别·年龄" value={`${genderText} ${metrics.age}岁`} />
@@ -42,8 +42,8 @@ export function MetricsPanel({ summary, metrics, mode, activeGrid, layout = "sta
         </div>
       </div>
 
-      <div className="rounded-[22px] border border-[#ddcff0] bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(244,236,252,0.98))] px-4 py-4 shadow-sm">
-        {showHeading ? <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-plum/62">{activeModeLabel}灵魂结构</p> : null}
+      <div className="rounded-[18px] border border-[#ddcff0] bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(244,236,252,0.98))] px-3 py-2.5 shadow-sm">
+        {showHeading ? <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-plum/62">{activeModeLabel}灵魂结构</p> : null}
         <div className="space-y-0">
           <MetricRow label="主魂" value={activeGrid.mainSoul || "—"} emphasis />
           <MetricRow label="副魂" value={activeGrid.subSoul || "—"} emphasis />
@@ -161,7 +161,7 @@ function MissingItems({
   }>;
 }) {
   return (
-    <div className="flex flex-wrap gap-x-1 gap-y-1.5">
+    <div className="flex flex-wrap gap-x-1 gap-y-1">
       {items.map((item, index) => (
         <span key={`${item.digit}-${index}`} className={`transition-colors ${item.toneClassName}`}>
           {item.text}
@@ -194,7 +194,7 @@ function AlignedMissingDisplay({
       <div className="flex justify-end">
         {summaryText ? (
           <span
-            className={`inline-flex items-center rounded-full border border-plum/12 bg-plum/6 px-2.5 py-0.5 font-semibold tracking-[0.04em] text-plum/65 ${
+            className={`inline-flex items-center rounded-full border border-plum/12 bg-plum/6 px-2 py-0.5 font-semibold tracking-[0.04em] text-plum/65 ${
               emphasis ? "text-xs" : "text-[11px]"
             }`}
           >
@@ -208,9 +208,9 @@ function AlignedMissingDisplay({
 
 function MetricBlock({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-[18px] border border-[#f1ebf6] bg-white/80 px-3.5 py-3">
-      <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-plum/50">{label}</p>
-      <p className="font-display text-base font-bold text-ink">{value}</p>
+    <div className="rounded-2xl border border-[#f1ebf6] bg-white/80 px-3 py-2">
+      <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-plum/50">{label}</p>
+      <p className="font-display text-sm font-bold text-ink">{value}</p>
     </div>
   );
 }
@@ -227,11 +227,11 @@ function MetricRow({
   emphasis?: boolean;
 }) {
   return (
-    <div className={`metric-row ${emphasis ? "!py-3" : "!py-2.5"}`}>
+    <div className={`metric-row ${emphasis ? "!py-2" : "!py-1.5"}`}>
       <p className={`${emphasis ? "text-xs" : "text-[10px]"} font-semibold uppercase tracking-[0.16em] text-plum/60`}>{label}</p>
       <div
         className={`min-w-0 w-full font-display font-extrabold text-plum ${
-          emphasis ? "text-lg leading-8" : "text-base leading-7"
+          emphasis ? "text-base leading-6" : "text-sm leading-6"
         } ${valueClassName ?? ""}`}
       >
         {value}

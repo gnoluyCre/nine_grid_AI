@@ -14,19 +14,19 @@ export function ResultBannerList({ banners }: ResultBannerListProps) {
   }
 
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-1">
       {banners.map((banner) => (
         <div
           key={banner.code}
-          className={`rounded-[18px] border px-3.5 py-2 ${
+          className={`rounded-[14px] border px-3 py-1.5 ${
             banner.type === "warning"
               ? "border-[#f0d6d6] bg-[#fff7f7] text-[#7e2f2f]"
               : "border-plum/15 bg-plum/5 text-plum"
           }`}
         >
           <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-            <p className="text-sm font-semibold leading-5">{banner.title}</p>
-            <p className="text-[11px] leading-5 opacity-80">{banner.description}</p>
+            <p className="text-xs font-semibold leading-4">{banner.title}</p>
+            <p className="text-[10px] leading-4 opacity-80">{banner.description}</p>
           </div>
         </div>
       ))}

@@ -1,8 +1,8 @@
 // input: 地区树、当前选择值与确认回调。
-// output: 支持留空的三级地区联动选择器。
+// output: 支持留空且弹层打开时才构造可滚动列表的三级地区联动选择器。
 // pos: 出生地区录入专用选择组件。
 // 一旦我被更新务必更新我的开头注释以及所属文件夹的 md
-import { useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import { PickerSheet } from "./PickerSheet";
 import { findRegionSelectionById } from "../lib/regionTree";
 import type { RegionSelectionValue, RegionTreeNode } from "../types/models";
@@ -27,6 +27,30 @@ export function RegionPicker({ regionTree, value, onChange }: RegionPickerProps)
     activeProvince?.cities.find((city) => city.name === draft?.cityName) ?? activeProvince?.cities[0];
   const activeDistrict =
     activeCity?.districts.find((district) => district.id === draft?.regionId) ?? activeCity?.districts[0];
+  const provinceItems = useMemo(
+    () =>
+      regionTree.map((province) => ({
+        value: province.name,
+        label: province.name,
+      })),
+    [regionTree],
+  );
+  const cityItems = useMemo(
+    () =>
+      (activeProvince?.cities ?? []).map((city) => ({
+        value: city.name,
+        label: city.name,
+      })),
+    [activeProvince],
+  );
+  const districtItems = useMemo(
+    () =>
+      (activeCity?.districts ?? []).map((district) => ({
+        value: district.id,
+        label: district.name,
+      })),
+    [activeCity],
+  );
 
   function handleProvinceChange(provinceName: string) {
     const province = regionTree.find((item) => item.name === provinceName);
@@ -119,46 +143,24 @@ export function RegionPicker({ regionTree, value, onChange }: RegionPickerProps)
         </button>
       </div>
 
-      <PickerSheet
-        open={open}
-        title="选择出生地区"
-        description="基于本地行政区数据逐级选择省、市、区；未填写地区时不会计算真太阳时。"
-        onClose={() => {
-          setDraft(selectedValue);
-          setOpen(false);
-        }}
-        onConfirm={handleConfirm}
-      >
-        <div className="grid gap-4 lg:grid-cols-3">
-          <PickerColumn
-            label="省份"
-            items={regionTree.map((province) => ({
-              value: province.name,
-              label: province.name,
-            }))}
-            activeValue={activeProvince?.name}
-            onSelect={handleProvinceChange}
-          />
-          <PickerColumn
-            label="城市"
-            items={(activeProvince?.cities ?? []).map((city) => ({
-              value: city.name,
-              label: city.name,
-            }))}
-            activeValue={activeCity?.name}
-            onSelect={handleCityChange}
-          />
-          <PickerColumn
-            label="区县"
-            items={(activeCity?.districts ?? []).map((district) => ({
-              value: district.id,
-              label: district.name,
-            }))}
-            activeValue={activeDistrict?.id}
-            onSelect={handleDistrictChange}
-          />
-        </div>
-      </PickerSheet>
+      {open ? (
+        <PickerSheet
+          open
+          title="选择出生地区"
+          description="基于本地行政区数据逐级选择省、市、区；未填写地区时不会计算真太阳时。"
+          onClose={() => {
+            setDraft(selectedValue);
+            setOpen(false);
+          }}
+          onConfirm={handleConfirm}
+        >
+          <div className="grid min-h-0 gap-3 sm:grid-cols-3 sm:gap-4">
+            <PickerColumn label="省份" items={provinceItems} activeValue={activeProvince?.name} onSelect={handleProvinceChange} />
+            <PickerColumn label="城市" items={cityItems} activeValue={activeCity?.name} onSelect={handleCityChange} />
+            <PickerColumn label="区县" items={districtItems} activeValue={activeDistrict?.id} onSelect={handleDistrictChange} />
+          </div>
+        </PickerSheet>
+      ) : null}
     </>
   );
 }
@@ -173,11 +175,11 @@ interface PickerColumnProps {
   onSelect: (value: string) => void;
 }
 
-function PickerColumn({ label, items, activeValue, onSelect }: PickerColumnProps) {
+const PickerColumn = memo(function PickerColumn({ label, items, activeValue, onSelect }: PickerColumnProps) {
   return (
-    <section className="rounded-[28px] border border-line/80 bg-white/72 p-4">
+    <section className="min-h-0 rounded-[22px] border border-line/80 bg-white/72 p-3 sm:rounded-[28px] sm:p-4">
       <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-plum/55">{label}</p>
-      <div className="max-h-[18rem] space-y-2 overflow-y-auto pr-1">
+      <div className="max-h-[28vh] space-y-2 overflow-y-auto pr-1 sm:max-h-[46vh]">
         {items.map((item) => (
           <button
             key={item.value}
@@ -191,4 +193,4 @@ function PickerColumn({ label, items, activeValue, onSelect }: PickerColumnProps
       </div>
     </section>
   );
-}
+});

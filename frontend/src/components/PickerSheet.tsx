@@ -1,5 +1,5 @@
-// input: 打开状态、标题、按钮回调与子内容。
-// output: 移动端风格的底部选择抽屉。
+// input: 打开状态、标题、说明、按钮回调与子内容。
+// output: 头尾固定、内容可滚动的移动端风格选择抽屉。
 // pos: 前端统一选择器容器组件。
 // 一旦我被更新务必更新我的开头注释以及所属文件夹的 md
 import { useEffect } from "react";
@@ -56,9 +56,9 @@ export function PickerSheet({
         className="absolute inset-0 cursor-default"
         onClick={onClose}
       />
-      <section className="relative z-10 max-h-[86vh] w-full overflow-hidden rounded-t-[32px] border border-white/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,243,253,0.98))] shadow-soft sm:mb-6 sm:max-w-4xl sm:rounded-[32px]">
+      <section className="relative z-10 flex max-h-[88vh] w-full flex-col overflow-hidden rounded-t-[32px] border border-white/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,243,253,0.98))] shadow-soft sm:mb-6 sm:max-w-4xl sm:rounded-[32px]">
         <div className="mx-auto mt-3 h-1.5 w-14 rounded-full bg-plum/18 sm:hidden" />
-        <div className="border-b border-line/75 px-5 py-4 sm:px-6">
+        <div className="shrink-0 border-b border-line/75 px-5 py-3 sm:px-6 sm:py-4">
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-plum/55">信息选择</p>
@@ -70,8 +70,8 @@ export function PickerSheet({
             </button>
           </div>
         </div>
-        <div className="max-h-[calc(86vh-10rem)] overflow-y-auto px-5 py-5 sm:px-6">{children}</div>
-        <div className="flex items-center gap-3 border-t border-line/75 bg-white/88 px-5 py-4 sm:px-6">
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6 sm:py-5">{children}</div>
+        <div className="flex shrink-0 items-center gap-3 border-t border-line/75 bg-white/88 px-5 py-3 sm:px-6 sm:py-4">
           <button type="button" onClick={onClose} className="picker-secondary-button flex-1">
             取消
           </button>
